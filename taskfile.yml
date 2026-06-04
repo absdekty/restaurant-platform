@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  proto:
+    desc: "Генерирует proto файлы"
+    cmds:
+      - protoc --go_out=. --go-grpc_out=. api/proto/{{.SERVICE}}/{{.VERSION}}/*.proto
+    vars:
+      SERVICE: '{{.SERVICE}}'
+      VERSION: '{{.VERSION}}'
+
+  run:
+    desc: "Быстрый запуск"
+    cmds:
+      - go run services/{{.SERVICE}}/cmd/main.go
+    requires:
+      vars: ["SERVICE"]
