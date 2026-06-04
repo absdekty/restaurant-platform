@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_tokens_token;
+DROP TABLE IF EXISTS tokens;
