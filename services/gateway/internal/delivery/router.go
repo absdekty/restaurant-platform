@@ -7,7 +7,10 @@ import (
 func NewRouter(handler *Handler) *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Get("/health", handler.HealthCheck)
+	setupMiddleware(r, handler)
+
+	r.Get("/health", handler.HealthCheck) // GET /health - возвращает StatusOK
+	r.Get("/metrics", handler.GetMetrics) // GET /metrics - получить актуальные метрики
 
 	return r
 }

@@ -50,8 +50,8 @@ func (r *RESTServer) Run() error {
 
 	logger.Info.Println("завершение HTTP сервера...")
 
-	ctx, cancel = context.WithTimeout(context.Background(), r.gsTime)
-	defer cancel()
+	ctx, cancelShutdown := context.WithTimeout(context.Background(), r.gsTime)
+	defer cancelShutdown()
 
 	return r.Shutdown(ctx)
 }
