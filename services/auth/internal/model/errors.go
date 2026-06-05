@@ -4,8 +4,8 @@ import "errors"
 
 /* Ошибки хранилища */
 var (
-	TokenAlreadyExists = errors.New("Token already exist")
-	ErrTokenNotFound   = errors.New("Token not found")
+	ErrTokenAlreadyExists = errors.New("Token already exist")
+	ErrTokenNotFound      = errors.New("Token not found")
 )
 
 /* Ошибки сервиса */

@@ -108,7 +108,7 @@ func (s *Storage) saveRefreshToken(ctx context.Context, exec dbExecutor, token *
 		token.UserID, token.Token, token.Revoked, token.ExpiresAt, token.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sqlite3.ErrConstraintUnique) {
-			return model.TokenAlreadyExists
+			return model.ErrTokenAlreadyExists
 		}
 		return fmt.Errorf("failed to save refresh token: %w", err)
 	}
