@@ -1,15 +1,14 @@
 package main
 
 import (
-	"google.golang.org/grpc"
-	"net"
-	authv1 "restaurant/api/proto/auth/v1"
+	"context"
+	"os/signal"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
 	"restaurant/services/auth/internal/delivery/grpc"
-	"restaurant/services/auth/internal/server"
 	"restaurant/services/auth/internal/service"
 	"restaurant/services/auth/internal/storage/sqlite3"
+	"syscall"
 	"time"
 )
 
@@ -23,9 +22,13 @@ func main() {
 	/* Хранилище refresh-token */
 	storage, err := sqlite3.New("tokens.db")
 	if err != nil {
-		logger.Error.Printf("failed to create storage: %v", err)
+		logger.Error.Printf("ошибка создания хранилища: %v", err)
 	}
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			logger.Warn.Printf("ошибка закрытия хранилища: %v", err)
+		}
+	}()
 
 	/* JWT-Service */
 	jwtService := service.NewJWT(
@@ -34,20 +37,28 @@ func main() {
 		time.Duration(config.Get[int]("AUTH_REFRESH_TTL", 7))*time.Hour*24,
 		storage)
 
-	/* gRPC Handler */
-	handler := delivery.NewHandler(jwtService)
-
-	/* gRPC Listener */
-	lis, err := net.Listen("tcp", config.Get[string]("AUTH_GRPC_LISTENER", ":50051"))
-
 	/* gRPC Server */
-	gRPCServer := grpc.NewServer()
-	authv1.RegisterAuthServiceServer(gRPCServer, handler)
-	srv := server.NewGRPCServer(
-		gRPCServer, lis,
+	srv := delivery.NewGRPCServer(jwtService,
+		config.Get[string]("AUTH_GRPC_LISTENER", ":50051"),
 		time.Duration(config.Get[int]("AUTH_SHUTDOWN", 30))*time.Second)
 
-	if err := srv.Run(); err != nil {
-		logger.Error.Printf("ошибка остановки сервера: %v", err)
+	go func() {
+		if err = srv.Run(); err != nil {
+			logger.Error.Printf("ошибка запуска gRPC сервера: %v", err)
+		}
+	}()
+
+	/* Graceful shutdown */
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+
+	<-ctx.Done()
+
+	logger.Info.Println("получен сигнал завершение сервера, останавливаем..")
+
+	if err = srv.Stop(); err != nil {
+		logger.Warn.Printf("программа завершилась не gracefully: %v", err)
+		return
 	}
+	logger.Info.Println("программа завершилась gracefully")
 }

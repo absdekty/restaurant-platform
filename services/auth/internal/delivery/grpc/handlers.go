@@ -3,7 +3,9 @@ package delivery
 import (
 	"context"
 	"errors"
-	authv1 "restaurant/api/proto/auth/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	authv2 "restaurant/api/proto/auth/v2"
 	"restaurant/services/auth/internal/model"
 )
 
@@ -12,7 +14,7 @@ type HandlerToken interface {
 }
 
 type GRPCHandler struct {
-	authv1.UnimplementedAuthServiceServer
+	authv2.UnimplementedAuthServiceServer
 	tokenService HandlerToken
 }
 
@@ -22,29 +24,20 @@ func NewHandler(tokenService HandlerToken) *GRPCHandler {
 	}
 }
 
-func (g *GRPCHandler) ValidateToken(ctx context.Context, req *authv1.ValidateTokenRequest) (*authv1.ValidateTokenResponse, error) {
+func (g *GRPCHandler) ValidateToken(ctx context.Context, req *authv2.ValidateTokenRequest) (*authv2.ValidateTokenResponse, error) {
 	userID, err := g.tokenService.ValidateAccessToken(req.AccessToken)
 	if err != nil {
 		if errors.Is(err, model.ErrTokenNotFound) {
-			return &authv1.ValidateTokenResponse{
-				Error: ptrString("Token not found"),
-			}, nil
+			return nil, status.Error(codes.NotFound, "token not found")
 		}
-
 		if errors.Is(err, model.ErrTokenRevoked) {
-			return &authv1.ValidateTokenResponse{
-				Error: ptrString("Token revoked"),
-			}, nil
+			return nil, status.Error(codes.PermissionDenied, "token revoked")
 		}
-
-		return &authv1.ValidateTokenResponse{
-			Error: ptrString(err.Error()),
-		}, nil
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	return &authv1.ValidateTokenResponse{
+	return &authv2.ValidateTokenResponse{
 		UserId: userID,
-		Error:  nil,
 	}, nil
 }
 

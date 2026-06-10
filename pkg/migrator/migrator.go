@@ -33,7 +33,7 @@ func Migrate(db *sql.DB, driver Driver, fs embed.FS, dir string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create migrator: %w", err)
 		}
-		defer m.Close()
+		// defer m.Close()
 
 		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 			return fmt.Errorf("failed to apply migrations: %w", err)

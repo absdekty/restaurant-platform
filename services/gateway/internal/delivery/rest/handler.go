@@ -1,23 +1,21 @@
 package delivery
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 )
 
-type AuthService interface {
-	ValidateToken(ctx context.Context, token string) (string, error)
-}
-
 type Handler struct {
-	authService AuthService
 	rateLimiter *RateLimiter
 	metrics     *Metrics
+	auth        *Auth
 }
 
-func NewHandler(authService AuthService, rateLimiter *RateLimiter, metrics *Metrics) *Handler {
-	return &Handler{authService: authService, rateLimiter: rateLimiter, metrics: metrics}
+func NewHandler(rateLimiter *RateLimiter, metrics *Metrics, auth *Auth) *Handler {
+	return &Handler{
+		rateLimiter: rateLimiter,
+		metrics:     metrics,
+		auth:        auth}
 }
 
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {

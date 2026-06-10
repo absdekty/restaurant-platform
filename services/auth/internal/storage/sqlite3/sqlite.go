@@ -6,9 +6,10 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3"
 	"restaurant/pkg/migrator"
 	"restaurant/services/auth/internal/model"
+	"strings"
 )
 
 /* Интерфейс для транкзаций */
@@ -107,7 +108,7 @@ func (s *Storage) saveRefreshToken(ctx context.Context, exec dbExecutor, token *
 	_, err := exec.ExecContext(ctx, query,
 		token.UserID, token.Token, token.Revoked, token.ExpiresAt, token.CreatedAt)
 	if err != nil {
-		if errors.Is(err, sqlite3.ErrConstraintUnique) {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return model.ErrTokenAlreadyExists
 		}
 		return fmt.Errorf("failed to save refresh token: %w", err)

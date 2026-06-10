@@ -11,7 +11,19 @@ type contextKey string
 
 const UserIDKey contextKey = "userID"
 
-func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
+type AuthService interface {
+	ValidateToken(ctx context.Context, token string) (string, error)
+}
+
+type Auth struct {
+	authService AuthService
+}
+
+func NewAuth(authService AuthService) *Auth {
+	return &Auth{authService: authService}
+}
+
+func (a *Auth) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -25,7 +37,7 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		userID, err := h.authService.ValidateToken(r.Context(), parts[1])
+		userID, err := a.authService.ValidateToken(r.Context(), parts[1])
 		if err != nil {
 			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
 			return

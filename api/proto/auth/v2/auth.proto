@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package auth.v2;
+option go_package = "./api/proto/auth/v2;authv2";
+
+service AuthService {
+	rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+message ValidateTokenRequest {
+	string access_token = 1;
+}
+
+message ValidateTokenResponse {
+	string user_id = 1;
+}
