@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
+	"restaurant/pkg/tls"
 	"restaurant/services/gateway/internal/client"
 	"restaurant/services/gateway/internal/delivery/rest"
 	"syscall"
@@ -18,15 +19,34 @@ func main() {
 	/* Логгер */
 	logger.Init("Gateway")
 
+	/* TLS Clients */
+	clientAuthCreds, err := tls.ClientCreds(
+		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
+		config.Get[string]("GATEWAY_CERT", "certs/gateway/server-cert.pem"),
+		config.Get[string]("GATEWAY_KEY", "certs/gateway/server-key.pem"),
+		"auth")
+	if err != nil {
+		logger.Error.Printf("ошибка создания mTLS[auth]: %v", err)
+	}
+
+	clientUserCreds, err := tls.ClientCreds(
+		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
+		config.Get[string]("GATEWAY_CERT", "certs/gateway/server-cert.pem"),
+		config.Get[string]("GATEWAY_KEY", "certs/gateway/server-key.pem"),
+		"user")
+	if err != nil {
+		logger.Error.Printf("ошибка создания mTLS: %v[user]", err)
+	}
+
 	/* gRPC auth-client */
-	authClient, err := client.NewAuthClient(config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"))
+	authClient, err := client.NewAuthClient(clientAuthCreds, config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"))
 	if err != nil {
 		logger.Error.Printf("ошибка gRPC клиента: %v", err)
 	}
 	defer authClient.Close()
 
 	/* gRPC user-client */
-	userClient, err := client.NewUserClient(config.Get[string]("USER_GRPC_LISTENER", "localhost:50052"))
+	userClient, err := client.NewUserClient(clientUserCreds, config.Get[string]("USER_GRPC_LISTENER", "localhost:50052"))
 	if err != nil {
 		logger.Error.Printf("ошибка gRPC клиента: %v", err)
 	}

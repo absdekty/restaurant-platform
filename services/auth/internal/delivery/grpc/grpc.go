@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	authv3 "restaurant/api/proto/auth/v3"
 	"restaurant/pkg/logger"
@@ -13,14 +14,16 @@ import (
 
 type gRPCServer struct {
 	addr         string
+	creds        credentials.TransportCredentials
 	tokenService HandlerToken
 	gsTime       time.Duration
 	server       *grpc.Server
 }
 
-func NewGRPCServer(tokenService HandlerToken, addr string, gsTime time.Duration) *gRPCServer {
+func NewGRPCServer(creds credentials.TransportCredentials, tokenService HandlerToken, addr string, gsTime time.Duration) *gRPCServer {
 	return &gRPCServer{
 		addr:         addr,
+		creds:        creds,
 		tokenService: tokenService,
 		gsTime:       gsTime,
 	}
@@ -35,6 +38,7 @@ func (s *gRPCServer) Run() error {
 	}
 
 	opts := []grpc.ServerOption{
+		grpc.Creds(s.creds),
 		grpc.MaxRecvMsgSize(1024 * 1024),
 		grpc.MaxSendMsgSize(1024 * 1024),
 		grpc.ConnectionTimeout(10 * time.Second),

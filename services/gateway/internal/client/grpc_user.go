@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 	"restaurant/services/gateway/internal/model"
@@ -19,7 +19,7 @@ type UserClient struct {
 	conn   *grpc.ClientConn
 }
 
-func NewUserClient(addr string) (*UserClient, error) {
+func NewUserClient(creds credentials.TransportCredentials, addr string) (*UserClient, error) {
 	serviceConfig := `{
 		"methodConfig": [
 			{
@@ -42,7 +42,7 @@ func NewUserClient(addr string) (*UserClient, error) {
 	}
 
 	conn, err := grpc.Dial(addr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultServiceConfig(serviceConfig),
 		grpc.WithKeepaliveParams(keepaliveParams))
 	if err != nil {

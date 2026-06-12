@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	userv1 "restaurant/api/proto/user/v1"
 	"restaurant/pkg/logger"
@@ -13,15 +14,17 @@ import (
 
 type gRPCServer struct {
 	addr        string
+	creds       credentials.TransportCredentials
 	userService UserService
 	authService AuthService
 	gsTime      time.Duration
 	server      *grpc.Server
 }
 
-func NewGRPCServer(userService UserService, authService AuthService, addr string, gsTime time.Duration) *gRPCServer {
+func NewGRPCServer(creds credentials.TransportCredentials, userService UserService, authService AuthService, addr string, gsTime time.Duration) *gRPCServer {
 	return &gRPCServer{
 		addr:        addr,
+		creds:       creds,
 		userService: userService,
 		authService: authService,
 		gsTime:      gsTime,
@@ -37,6 +40,7 @@ func (s *gRPCServer) Run() error {
 	}
 
 	opts := []grpc.ServerOption{
+		grpc.Creds(s.creds),
 		grpc.MaxRecvMsgSize(1024 * 1024),
 		grpc.MaxSendMsgSize(1024 * 1024),
 		grpc.ConnectionTimeout(10 * time.Second),

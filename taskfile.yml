@@ -34,3 +34,26 @@ tasks:
       - cmd /c start cmd /k "go run services/gateway/cmd/main.go"
       - cmd /c start cmd /k "go run services/auth/cmd/main.go"
       - cmd /c start cmd /k "go run services/user/cmd/main.go"
+
+  gen-certs-win:
+    desc: "Генерация mTLS сертификатов"
+    cmds:
+      - mkdir -p certs/ca certs/auth certs/user certs/gateway
+      - openssl genrsa -out certs/ca/ca-key.pem 4096
+      - openssl req -new -x509 -days 365 -key certs/ca/ca-key.pem -out certs/ca/ca-cert.pem -subj "/CN=Restaurant" -addext "basicConstraints=critical,CA:TRUE"
+      - |
+        echo "subjectAltName=DNS:auth,DNS:localhost,IP:127.0.0.1" > certs/auth/san.ext
+        openssl genrsa -out certs/auth/server-key.pem 4096
+        openssl req -new -key certs/auth/server-key.pem -out certs/auth/server.csr -subj "/CN=auth"
+        openssl x509 -req -days 365 -in certs/auth/server.csr -CA certs/ca/ca-cert.pem -CAkey certs/ca/ca-key.pem -out certs/auth/server-cert.pem -extfile certs/auth/san.ext
+      - |
+        echo "subjectAltName=DNS:user,DNS:localhost,IP:127.0.0.1" > certs/user/san.ext
+        openssl genrsa -out certs/user/server-key.pem 4096
+        openssl req -new -key certs/user/server-key.pem -out certs/user/server.csr -subj "/CN=user"
+        openssl x509 -req -days 365 -in certs/user/server.csr -CA certs/ca/ca-cert.pem -CAkey certs/ca/ca-key.pem -out certs/user/server-cert.pem -extfile certs/user/san.ext
+      - |
+        echo "subjectAltName=DNS:gateway,DNS:localhost,IP:127.0.0.1" > certs/gateway/san.ext
+        openssl genrsa -out certs/gateway/client-key.pem 4096
+        openssl req -new -key certs/gateway/client-key.pem -out certs/gateway/client.csr -subj "/CN=gateway"
+        openssl x509 -req -days 365 -in certs/gateway/client.csr -CA certs/ca/ca-cert.pem -CAkey certs/ca/ca-key.pem -out certs/gateway/client-cert.pem -extfile certs/gateway/san.ext
+      - rm -f certs/*/*.csr certs/*/san.ext

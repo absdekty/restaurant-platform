@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
+	"restaurant/pkg/tls"
 	"restaurant/services/auth/internal/delivery/grpc"
 	"restaurant/services/auth/internal/service"
 	"restaurant/services/auth/internal/storage/sqlite3"
@@ -37,8 +38,17 @@ func main() {
 		time.Duration(config.Get[int]("AUTH_REFRESH_TTL", 7))*time.Hour*24,
 		storage)
 
+	/* TLS Server */
+	creds, err := tls.ServerCreds(
+		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
+		config.Get[string]("AUTH_CERT", "certs/auth/server-cert.pem"),
+		config.Get[string]("AUTH_KEY", "certs/auth/server-key.pem"))
+	if err != nil {
+		logger.Error.Printf("ошибка создания mTLS: %v", err)
+	}
+
 	/* gRPC Server */
-	srv := delivery.NewGRPCServer(jwtService,
+	srv := delivery.NewGRPCServer(creds, jwtService,
 		config.Get[string]("AUTH_GRPC_LISTENER", ":50051"),
 		time.Duration(config.Get[int]("AUTH_SHUTDOWN", 30))*time.Second)
 
