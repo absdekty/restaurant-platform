@@ -13,5 +13,24 @@ tasks:
     desc: "Быстрый запуск"
     cmds:
       - go run services/{{.SERVICE}}/cmd/main.go
-    requires:
-      vars: ["SERVICE"]
+    vars:
+      SERVICE: '{{.SERVICE}}'
+  
+  tests:
+    desc: "Запустить все тесты"
+    cmds:
+      - go test -v ./...
+
+  test:
+    desc: "Тест сервиса"
+    cmds:
+      - go test -v ./services/{{.SERVICE}}/...
+    vars:
+      SERVICE: '{{.SERVICE}}'
+
+  run-all-win:
+    desc: "Запустить все сервисы"
+    cmds:
+      - cmd /c start cmd /k "go run services/gateway/cmd/main.go"
+      - cmd /c start cmd /k "go run services/auth/cmd/main.go"
+      - cmd /c start cmd /k "go run services/user/cmd/main.go"

@@ -18,15 +18,22 @@ func main() {
 	/* Логгер */
 	logger.Init("Gateway")
 
-	/* gRPC Client */
-	authClient, err := client.NewAuthClient(config.Get[string]("GATEWAY_GRPC_CLIENT", "localhost:50051"))
+	/* gRPC auth-client */
+	authClient, err := client.NewAuthClient(config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"))
 	if err != nil {
 		logger.Error.Printf("ошибка gRPC клиента: %v", err)
 	}
 	defer authClient.Close()
 
+	/* gRPC user-client */
+	userClient, err := client.NewUserClient(config.Get[string]("USER_GRPC_LISTENER", "localhost:50052"))
+	if err != nil {
+		logger.Error.Printf("ошибка gRPC клиента: %v", err)
+	}
+	defer userClient.Close()
+
 	/* REST сервер */
-	restServer := delivery.NewREST(authClient, delivery.RESTServerConfig{
+	restServer := delivery.NewREST(authClient, userClient, delivery.RESTServerConfig{
 		Addr:         config.Get[string]("GATEWAY_HOST", "localhost") + ":" + config.Get[string]("GATEWAY_PORT", "8080"),
 		ReadTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_READ", 10)) * time.Second,
 		WriteTimeout: time.Duration(config.Get[int]("GATEWAY_TIMEOUT_WRITE", 10)) * time.Second,

@@ -17,7 +17,7 @@ func TestJWTService(t *testing.T) {
 	userID := "userid"
 
 	t.Run("Генерация токенов", func(t *testing.T) {
-		accessToken, refreshToken, err := service.GenerateTokens(ctx, userID)
+		accessToken, refreshToken, _, err := service.GenerateTokens(ctx, userID)
 		require.NoError(t, err)
 
 		assert.NotEmpty(t, accessToken)
@@ -26,7 +26,7 @@ func TestJWTService(t *testing.T) {
 	})
 
 	t.Run("Валидация сгенерированных токенов", func(t *testing.T) {
-		accessToken, refreshToken, _ := service.GenerateTokens(ctx, userID)
+		accessToken, refreshToken, _, _ := service.GenerateTokens(ctx, userID)
 
 		userIDToken, err := service.ValidateAccessToken(accessToken)
 		assert.NoError(t, err)
@@ -38,7 +38,7 @@ func TestJWTService(t *testing.T) {
 	})
 
 	t.Run("Валидация сгенерированных, подмененных друг другом токенов", func(t *testing.T) {
-		accessToken, refreshToken, _ := service.GenerateTokens(ctx, userID)
+		accessToken, refreshToken, _, _ := service.GenerateTokens(ctx, userID)
 
 		_, err := service.ValidateRefreshToken(ctx, accessToken)
 		assert.Error(t, err)
@@ -48,18 +48,18 @@ func TestJWTService(t *testing.T) {
 	})
 
 	t.Run("RefreshTokens с обоими токенами", func(t *testing.T) {
-		accessToken, refreshToken, _ := service.GenerateTokens(ctx, userID)
+		accessToken, refreshToken, _, _ := service.GenerateTokens(ctx, userID)
 
-		_, _, err := service.RefreshTokens(ctx, accessToken)
+		_, _, _, err := service.RefreshTokens(ctx, accessToken)
 		assert.Error(t, err)
 
-		_, _, err = service.RefreshTokens(ctx, refreshToken)
+		_, _, _, err = service.RefreshTokens(ctx, refreshToken)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Валидация RefreshTokens", func(t *testing.T) {
-		accessToken, refreshToken, _ := service.GenerateTokens(ctx, userID)
-		accessToken, refreshToken, _ = service.RefreshTokens(ctx, refreshToken)
+		accessToken, refreshToken, _, _ := service.GenerateTokens(ctx, userID)
+		accessToken, refreshToken, _, _ = service.RefreshTokens(ctx, refreshToken)
 
 		userIDToken, err := service.ValidateAccessToken(accessToken)
 		assert.NoError(t, err)
@@ -74,7 +74,7 @@ func TestJWTService(t *testing.T) {
 		err := service.RevokeRefreshToken(ctx, "invalid")
 		assert.Error(t, err)
 
-		accessToken, refreshToken, _ := service.GenerateTokens(ctx, userID)
+		accessToken, refreshToken, _, _ := service.GenerateTokens(ctx, userID)
 
 		err = service.RevokeRefreshToken(ctx, accessToken)
 		assert.Error(t, err)
@@ -84,12 +84,12 @@ func TestJWTService(t *testing.T) {
 	})
 
 	t.Run("RefreshTokens с отозванным токеном", func(t *testing.T) {
-		_, refreshToken, _ := service.GenerateTokens(ctx, userID)
+		_, refreshToken, _, _ := service.GenerateTokens(ctx, userID)
 
 		err := service.RevokeRefreshToken(ctx, refreshToken)
 		assert.NoError(t, err)
 
-		_, _, err = service.RefreshTokens(ctx, refreshToken)
+		_, _, _, err = service.RefreshTokens(ctx, refreshToken)
 		assert.Error(t, err)
 	})
 }

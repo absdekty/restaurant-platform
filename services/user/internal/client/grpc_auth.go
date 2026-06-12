@@ -4,13 +4,9 @@ import (
 	"context"
 	"time"
 
-	"restaurant/services/gateway/internal/model"
-
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/status"
 
 	authv3 "restaurant/api/proto/auth/v3"
 )
@@ -60,47 +56,13 @@ func (a *AuthClient) Close() error {
 	return a.conn.Close()
 }
 
-func (a *AuthClient) ValidateToken(ctx context.Context, token string) (string, error) {
-	resp, err := a.client.ValidateToken(ctx, &authv3.ValidateTokenRequest{
-		AccessToken: token,
+func (a *AuthClient) GenerateTokens(ctx context.Context, userID string) (string, string, int32, error) {
+	resp, err := a.client.GenerateTokens(ctx, &authv3.GenerateTokensRequest{
+		UserId: userID,
 	})
 	if err != nil {
-		if status.Code(err) == codes.Unauthenticated ||
-			status.Code(err) == codes.PermissionDenied ||
-			status.Code(err) == codes.NotFound {
-			return "", model.ErrUnauthorized
-		}
-		return "", err
-	}
-
-	return resp.UserId, nil
-}
-
-func (a *AuthClient) RefreshTokens(ctx context.Context, token string) (string, string, int32, error) {
-	resp, err := a.client.RefreshTokens(ctx, &authv3.RefreshTokensRequest{
-		RefreshToken: token,
-	})
-	if err != nil {
-		if status.Code(err) == codes.PermissionDenied ||
-			status.Code(err) == codes.Unauthenticated {
-			return "", "", 0, model.ErrInvalidToken
-		}
 		return "", "", 0, err
 	}
 
 	return resp.AccessToken, resp.RefreshToken, resp.RefreshTokenTtl, nil
-}
-
-func (a *AuthClient) RevokeRefreshToken(ctx context.Context, token string) error {
-	_, err := a.client.RevokeRefreshToken(ctx, &authv3.RevokeRefreshTokenRequest{
-		RefreshToken: token,
-	})
-	if err != nil {
-		if status.Code(err) == codes.Unauthenticated {
-			return model.ErrTokenNotFound
-		}
-		return err
-	}
-
-	return nil
 }

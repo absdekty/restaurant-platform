@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package auth.v3;
+option go_package = "./api/proto/auth/v3;authv3";
+
+import "google/protobuf/empty.proto";
+
+service AuthService {
+	rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+	rpc GenerateTokens(GenerateTokensRequest) returns (GenerateTokensResponse);
+	rpc RefreshTokens(RefreshTokensRequest) returns (RefreshTokensResponse);
+	rpc RevokeRefreshToken(RevokeRefreshTokenRequest) returns (google.protobuf.Empty);
+}
+
+message ValidateTokenRequest {
+	string access_token = 1;
+}
+
+message ValidateTokenResponse {
+	string user_id = 1;
+}
+
+message GenerateTokensRequest {
+	string user_id = 1;
+}
+
+message GenerateTokensResponse {
+	string access_token = 1;
+	string refresh_token = 2;
+	int32 refresh_token_ttl = 3;
+}
+
+message RefreshTokensRequest {
+	string refresh_token = 1;
+}
+
+message RefreshTokensResponse {
+	string access_token = 1;
+	string refresh_token = 2;
+	int32 refresh_token_ttl = 3;
+}
+
+message RevokeRefreshTokenRequest {
+	string refresh_token = 1;
+}

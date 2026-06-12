@@ -10,6 +10,7 @@ import (
 
 type RESTServer struct {
 	authClient AuthService
+	userClient UserService
 	server     *http.Server
 	gsTime     time.Duration
 }
@@ -22,9 +23,10 @@ type RESTServerConfig struct {
 	GSTime       time.Duration
 }
 
-func NewREST(authClient AuthService, cfg RESTServerConfig) *RESTServer {
+func NewREST(authClient AuthService, userClient UserService, cfg RESTServerConfig) *RESTServer {
 	return &RESTServer{
 		authClient: authClient,
+		userClient: userClient,
 		server: &http.Server{
 			Addr:         cfg.Addr,
 			ReadTimeout:  cfg.ReadTimeout,
@@ -38,9 +40,9 @@ func NewREST(authClient AuthService, cfg RESTServerConfig) *RESTServer {
 func (r *RESTServer) Run() error {
 	rateLimiter := NewRateLimiter(100, 200) // Rate Limiter
 	metrics := NewMetrics()                 // Metrics
-	auth := NewAuth(r.authClient)           // Auth middleware
+	auth := NewAuth(r.authClient)           // Auth client | middleware
 
-	restHandler := NewHandler(rateLimiter, metrics, auth)
+	restHandler := NewHandler(rateLimiter, metrics, auth, r.userClient)
 	r.server.Handler = NewRouter(restHandler)
 
 	logger.Info.Printf("сервер слушает на: %s", r.server.Addr)

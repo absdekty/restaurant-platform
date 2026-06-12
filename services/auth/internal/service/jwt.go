@@ -42,17 +42,17 @@ func NewJWT(secretKey string, accessTTL, refreshTTL time.Duration, storage JWTSt
 }
 
 /* Генерирует access+refresh токены, сохраняя refresh */
-func (j *JWTService) GenerateTokens(ctx context.Context, userID string) (string, string, error) {
+func (j *JWTService) GenerateTokens(ctx context.Context, userID string) (string, string, int32, error) {
 	accessToken, refreshToken, err := j.generateTokens(userID)
 	if err != nil {
-		return "", "", err
+		return "", "", 0, err
 	}
 
 	if err := j.saveRefreshToken(ctx, userID, refreshToken); err != nil {
-		return "", "", err
+		return "", "", 0, err
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, refreshToken, int32(j.tokenTTLR / time.Second), nil
 }
 
 /* Валидирует access-token */
@@ -129,24 +129,24 @@ func (j *JWTService) RevokeRefreshToken(ctx context.Context, token string) error
 }
 
 /* Обновляет access+refresh токены, валидируя и отзывая старый */
-func (j *JWTService) RefreshTokens(ctx context.Context, token string) (string, string, error) {
+func (j *JWTService) RefreshTokens(ctx context.Context, token string) (string, string, int32, error) {
 	userID, err := j.ValidateRefreshToken(ctx, token)
 	if err != nil {
-		return "", "", err
+		return "", "", 0, err
 	}
 
 	accessToken, refreshToken, err := j.generateTokens(userID)
 	if err != nil {
-		return "", "", err
+		return "", "", 0, err
 	}
 
 	tokenToSave := j.newRefreshToken(userID, refreshToken)
 
 	if err := j.storage.RevokeAndSave(ctx, token, tokenToSave); err != nil {
-		return "", "", err
+		return "", "", 0, err
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, refreshToken, int32(j.tokenTTLR / time.Second), nil
 }
 
 /* Генерирует access+refresh токены, не сохраняя refresh */

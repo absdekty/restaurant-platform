@@ -7,27 +7,29 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
-	authv3 "restaurant/api/proto/auth/v3"
+	userv1 "restaurant/api/proto/user/v1"
 	"restaurant/pkg/logger"
 )
 
 type gRPCServer struct {
-	addr         string
-	tokenService HandlerToken
-	gsTime       time.Duration
-	server       *grpc.Server
+	addr        string
+	userService UserService
+	authService AuthService
+	gsTime      time.Duration
+	server      *grpc.Server
 }
 
-func NewGRPCServer(tokenService HandlerToken, addr string, gsTime time.Duration) *gRPCServer {
+func NewGRPCServer(userService UserService, authService AuthService, addr string, gsTime time.Duration) *gRPCServer {
 	return &gRPCServer{
-		addr:         addr,
-		tokenService: tokenService,
-		gsTime:       gsTime,
+		addr:        addr,
+		userService: userService,
+		authService: authService,
+		gsTime:      gsTime,
 	}
 }
 
 func (s *gRPCServer) Run() error {
-	handler := NewHandler(s.tokenService)
+	handler := NewHandler(s.userService, s.authService)
 
 	lis, err := net.Listen("tcp", s.addr)
 	if err != nil {
@@ -47,7 +49,7 @@ func (s *gRPCServer) Run() error {
 	}
 
 	s.server = grpc.NewServer(opts...)
-	authv3.RegisterAuthServiceServer(s.server, handler)
+	userv1.RegisterUserServiceServer(s.server, handler)
 
 	logger.Info.Printf("сервер слушает на: %s", s.addr)
 	if err := s.server.Serve(lis); err != nil {
