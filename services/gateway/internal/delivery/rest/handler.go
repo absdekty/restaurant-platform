@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -8,19 +9,34 @@ import (
 	"restaurant/services/gateway/internal/model"
 )
 
-type Handler struct {
-	rateLimiter *RateLimiter
-	metrics     *Metrics
-	auth        *Auth
-	user        UserService
+type MetricsHandler interface {
+	GetTotalRequests() uint64
+	GetActiveRequests() int64
+	GetErrorsTotal() uint64
+	GetErrorsByStatus() map[string]uint64
 }
 
-func NewHandler(rateLimiter *RateLimiter, metrics *Metrics, auth *Auth, user UserService) *Handler {
+type AuthHandler interface {
+	RefreshTokens(ctx context.Context, refreshtoken string) (string, string, int32, error)
+	RevokeRefreshToken(ctx context.Context, refreshtoken string) error
+}
+
+type UserHandler interface {
+	RegisterUser(ctx context.Context, name, password string) (string, error)
+	LoginUser(ctx context.Context, name, password string) (string, string, int32, error)
+}
+
+type Handler struct {
+	metrics MetricsHandler
+	auth    AuthHandler
+	user    UserHandler
+}
+
+func NewHandler(metrics MetricsHandler, auth AuthHandler, user UserHandler) *Handler {
 	return &Handler{
-		rateLimiter: rateLimiter,
-		metrics:     metrics,
-		auth:        auth,
-		user:        user}
+		metrics: metrics,
+		auth:    auth,
+		user:    user}
 }
 
 /* Сервис доступен? */
@@ -99,15 +115,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Path:     "/",
-		MaxAge:   int(refreshTTL),
-	})
+	setCookie(w, refreshToken, refreshTTL)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(LoginResponse{
@@ -139,15 +147,7 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Path:     "/",
-		MaxAge:   int(refreshTTL),
-	})
+	setCookie(w, refreshToken, refreshTTL)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(RefreshResponse{
@@ -170,10 +170,28 @@ func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 		logger.Error.Printf("revoke: %v", err)
 	}
 
+	clearCookie(w)
+
+	w.WriteHeader(http.StatusOK)
+}
+
+/* Установить куки */
+func setCookie(w http.ResponseWriter, refreshToken string, refreshTTL int32) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   int(refreshTTL),
+	})
+}
+
+/* Очистить куки */
+func clearCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:   "refresh_token",
 		MaxAge: -1,
 	})
-
-	w.WriteHeader(http.StatusOK)
 }

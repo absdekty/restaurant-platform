@@ -5,14 +5,35 @@ import (
 	"fmt"
 	"net/http"
 	"restaurant/pkg/logger"
+	mw "restaurant/services/gateway/internal/delivery/rest/middleware"
 	"time"
 )
 
+type MetricsREST interface {
+	MetricsHandler
+	mw.Middleware
+}
+
+type RateLimiterREST interface {
+	mw.Middleware
+}
+
+type AuthMiddlewareREST interface {
+	mw.Middleware
+}
+
+type Dependencies struct {
+	AuthClient  AuthHandler
+	UserClient  UserHandler
+	Metrics     MetricsREST
+	RateLimiter RateLimiterREST
+	AuthMW      AuthMiddlewareREST
+}
+
 type RESTServer struct {
-	authClient AuthService
-	userClient UserService
-	server     *http.Server
-	gsTime     time.Duration
+	deps   Dependencies
+	server *http.Server
+	gsTime time.Duration
 }
 
 type RESTServerConfig struct {
@@ -23,10 +44,9 @@ type RESTServerConfig struct {
 	GSTime       time.Duration
 }
 
-func NewREST(authClient AuthService, userClient UserService, cfg RESTServerConfig) *RESTServer {
+func NewREST(deps Dependencies, cfg RESTServerConfig) *RESTServer {
 	return &RESTServer{
-		authClient: authClient,
-		userClient: userClient,
+		deps: deps,
 		server: &http.Server{
 			Addr:         cfg.Addr,
 			ReadTimeout:  cfg.ReadTimeout,
@@ -38,12 +58,8 @@ func NewREST(authClient AuthService, userClient UserService, cfg RESTServerConfi
 }
 
 func (r *RESTServer) Run() error {
-	rateLimiter := NewRateLimiter(100, 200) // Rate Limiter
-	metrics := NewMetrics()                 // Metrics
-	auth := NewAuth(r.authClient)           // Auth client | middleware
-
-	restHandler := NewHandler(rateLimiter, metrics, auth, r.userClient)
-	r.server.Handler = NewRouter(restHandler)
+	restHandler := NewHandler(r.deps.Metrics, r.deps.AuthClient, r.deps.UserClient)
+	r.server.Handler = NewRouter(restHandler, r.deps.RateLimiter, r.deps.Metrics, r.deps.AuthMW)
 
 	logger.Info.Printf("сервер слушает на: %s", r.server.Addr)
 

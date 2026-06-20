@@ -21,7 +21,7 @@ func main() {
 	logger.Init("Auth")
 
 	/* Хранилище refresh-token */
-	storage, err := sqlite3.New("tokens.db")
+	storage, err := sqlite3.New("data/tokens.db")
 	if err != nil {
 		logger.Error.Printf("ошибка создания хранилища: %v", err)
 	}
@@ -49,7 +49,7 @@ func main() {
 
 	/* gRPC Server */
 	srv := delivery.NewGRPCServer(creds, jwtService,
-		config.Get[string]("AUTH_GRPC_LISTENER", ":50051"),
+		config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"),
 		time.Duration(config.Get[int]("AUTH_SHUTDOWN", 30))*time.Second)
 
 	go func() {

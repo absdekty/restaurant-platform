@@ -42,7 +42,7 @@ func (u *UserService) CreateUser(ctx context.Context, name, password string) (*m
 	}
 
 	user := &model.User{
-		ID:        uuid.New().String(),
+		ID:        uuid.Must(uuid.NewV7()).String(),
 		Name:      name,
 		Password:  hashedPassword,
 		CreatedAt: time.Now(),

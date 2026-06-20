@@ -1,4 +1,8 @@
 bin/*
-*.db
 *.exe
+certs/*
+*.pem
+data/*
+*.db
+*.db
 *.local
