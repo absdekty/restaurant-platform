@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	authv3 "restaurant/api/proto/auth/v3"
+	"restaurant/pkg/interceptors"
 	"restaurant/pkg/logger"
 )
 
@@ -47,7 +48,10 @@ func (s *gRPCServer) Run() error {
 			Time:              1 * time.Minute,
 			Timeout:           20 * time.Second,
 		}),
-		grpc.ChainUnaryInterceptor(loggingInterceptor, recoveryInterceptor),
+		grpc.ChainUnaryInterceptor(
+			interceptor.Recoverer(),
+			interceptor.Logger(),
+		),
 	}
 
 	s.server = grpc.NewServer(opts...)
