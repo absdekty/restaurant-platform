@@ -4,12 +4,13 @@ import (
 	"context"
 	"time"
 
+	"restaurant/services/gateway/internal/model"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
-	"restaurant/services/gateway/internal/model"
 
 	userv1 "restaurant/api/proto/user/v1"
 )

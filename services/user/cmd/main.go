@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"os/signal"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
 	"restaurant/services/user/internal/client"
-	"restaurant/services/user/internal/delivery/grpc"
+	delivery "restaurant/services/user/internal/delivery/grpc"
 	"restaurant/services/user/internal/service"
 	"restaurant/services/user/internal/storage/sqlite3"
 	"restaurant/services/user/pkg/hasher"
@@ -20,16 +22,20 @@ func main() {
 	config.Load("user")
 
 	/* Логгер */
-	logger.Init("User")
+	logger.SetupLogger("dev", "User")
 
 	/* Хранилище юзеров */
 	storage, err := sqlite3.New("data/users.db")
 	if err != nil {
-		logger.Error.Printf("ошибка создания хранилища: %v", err)
+		slog.Error("failed to create storage",
+			slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer func() {
 		if err := storage.Close(); err != nil {
-			logger.Warn.Printf("ошибка закрытия хранилища: %v", err)
+			slog.Warn("failed to close storage",
+				slog.String("error", err.Error()),
+				slog.String("storage_type", "sqlite3"))
 		}
 	}()
 
@@ -40,7 +46,10 @@ func main() {
 		config.Get[string]("USER_KEY", "certs/user/server-key.pem"),
 		"auth")
 	if err != nil {
-		logger.Error.Printf("ошибка создания mTLS: %v", err)
+		slog.Error("failed to create mTLS",
+			slog.String("error", err.Error()),
+			slog.String("type", "auth_client"))
+		os.Exit(1)
 	}
 
 	/* TLS Server */
@@ -49,13 +58,18 @@ func main() {
 		config.Get[string]("USER_CERT", "certs/user/server-cert.pem"),
 		config.Get[string]("USER_KEY", "certs/user/server-key.pem"))
 	if err != nil {
-		logger.Error.Printf("ошибка создания mTLS: %v", err)
+		slog.Error("failed to create mTLS",
+			slog.String("error", err.Error()),
+			slog.String("type", "user_server"))
+		os.Exit(1)
 	}
 
 	/* gRPC-auth client */
 	authClient, err := client.NewAuthClient(clientCreds, config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"))
 	if err != nil {
-		logger.Error.Printf("ошибка gRPC клиента: %v", err)
+		slog.Error("failed to run gRPC client",
+			slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer authClient.Close()
 
@@ -72,7 +86,9 @@ func main() {
 
 	go func() {
 		if err = srv.Run(); err != nil {
-			logger.Error.Printf("ошибка запуска gRPC сервера: %v", err)
+			slog.Error("failed to run gRPC server",
+				slog.String("error", err.Error()))
+			os.Exit(1)
 		}
 	}()
 
@@ -82,11 +98,12 @@ func main() {
 
 	<-ctx.Done()
 
-	logger.Info.Println("получен сигнал завершение сервера, останавливаем..")
+	slog.Info("got signal-notify")
 
 	if err = srv.Stop(); err != nil {
-		logger.Warn.Printf("программа завершилась не gracefully: %v", err)
+		slog.Warn("failed to gracefully shutdown",
+			slog.String("error", err.Error()))
 		return
 	}
-	logger.Info.Println("программа завершилась gracefully")
+	slog.Info("gracefully shutdown")
 }

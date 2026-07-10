@@ -1,14 +1,15 @@
 package delivery
 
 import (
-	"github.com/go-chi/chi/v5"
 	mw "restaurant/services/gateway/internal/delivery/rest/middleware"
+
+	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(handler *Handler, rateLimiter mw.Middleware, metrics mw.Middleware, auth mw.Middleware) *chi.Mux {
+func NewRouter(handler *Handler, logger mw.Middleware, rateLimiter mw.Middleware, metrics mw.Middleware, auth mw.Middleware) *chi.Mux {
 	r := chi.NewRouter()
 
-	mw.SetupMiddleware(r, rateLimiter, metrics)
+	mw.SetupMiddleware(r, logger, rateLimiter, metrics)
 
 	r.Get("/health", handler.HealthCheck) // GET /health - возвращает StatusOK
 	r.Get("/metrics", handler.GetMetrics) // GET /metrics - получить актуальные метрики
