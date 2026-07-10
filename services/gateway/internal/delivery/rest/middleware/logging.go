@@ -4,16 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"restaurant/pkg/models"
 	"time"
 
 	"github.com/google/uuid"
-)
-
-type contextKey1 string
-
-const (
-	TraceIDKey contextKey1 = "trace_id"
-	LoggerKey  contextKey1 = "logger"
 )
 
 type Logger struct {
@@ -43,8 +37,8 @@ func (l *Logger) Middleware(next http.Handler) http.Handler {
 			slog.String("user_agent", r.UserAgent()),
 		)
 
-		ctx := context.WithValue(r.Context(), TraceIDKey, traceID)
-		ctx = context.WithValue(ctx, LoggerKey, logger)
+		ctx := context.WithValue(r.Context(), models.TraceIDKey, traceID)
+		ctx = context.WithValue(ctx, models.LoggerKey, logger)
 
 		w.Header().Set("X-Trace-Id", traceID)
 		w.Header().Set("X-Request-Id", requestID)
@@ -63,7 +57,7 @@ func (l *Logger) Middleware(next http.Handler) http.Handler {
 }
 
 func (l *Logger) GetLogger(ctx context.Context) *slog.Logger {
-	if logger, ok := ctx.Value(LoggerKey).(*slog.Logger); ok {
+	if logger, ok := ctx.Value(models.LoggerKey).(*slog.Logger); ok {
 		return logger
 	}
 	return slog.Default()

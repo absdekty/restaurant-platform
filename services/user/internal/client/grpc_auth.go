@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 
 	authv3 "restaurant/api/proto/auth/v3"
+	"restaurant/pkg/interceptors"
 )
 
 type AuthClient struct {
@@ -38,10 +39,11 @@ func NewAuthClient(creds credentials.TransportCredentials, addr string) (*AuthCl
 		PermitWithoutStream: true,
 	}
 
-	conn, err := grpc.Dial(addr,
+	conn, err := grpc.NewClient(addr,
 		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultServiceConfig(serviceConfig),
-		grpc.WithKeepaliveParams(keepaliveParams))
+		grpc.WithKeepaliveParams(keepaliveParams),
+		grpc.WithUnaryInterceptor(interceptors.TraceClient()))
 	if err != nil {
 		return nil, err
 	}

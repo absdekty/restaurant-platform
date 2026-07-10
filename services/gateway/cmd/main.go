@@ -20,7 +20,7 @@ func main() {
 	config.Load("gateway")
 
 	/* Логгер */
-	logger.SetupLogger("dev", "gateway")
+	logger.SetupLogger("prod", "gateway")
 
 	/* TLS Clients */
 	clientAuthCreds, err := tls.ClientCreds(
