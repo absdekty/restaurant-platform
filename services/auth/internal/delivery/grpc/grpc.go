@@ -2,15 +2,16 @@ package delivery
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"time"
+
+	authv3 "restaurant/api/proto/auth/v3"
+	"restaurant/pkg/interceptors"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	authv3 "restaurant/api/proto/auth/v3"
-	"restaurant/pkg/interceptors"
-	"restaurant/pkg/logger"
 )
 
 type gRPCServer struct {
@@ -49,15 +50,16 @@ func (s *gRPCServer) Run() error {
 			Timeout:           20 * time.Second,
 		}),
 		grpc.ChainUnaryInterceptor(
-			interceptor.Recoverer(),
-			interceptor.Logger(),
+			interceptors.Logger(),
+			interceptors.Recoverer(),
 		),
 	}
 
 	s.server = grpc.NewServer(opts...)
 	authv3.RegisterAuthServiceServer(s.server, handler)
 
-	logger.Info.Printf("сервер слушает на: %s", s.addr)
+	slog.Info("gRPC server started",
+		"address", s.addr)
 	if err := s.server.Serve(lis); err != nil {
 		return fmt.Errorf("ошибка gRPC сервера: %v", err)
 	}

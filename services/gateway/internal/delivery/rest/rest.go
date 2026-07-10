@@ -3,8 +3,8 @@ package delivery
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"restaurant/pkg/logger"
 	mw "restaurant/services/gateway/internal/delivery/rest/middleware"
 	"time"
 )
@@ -22,12 +22,22 @@ type AuthMiddlewareREST interface {
 	mw.Middleware
 }
 
+type LoggerMiddlewareREST interface {
+	mw.Middleware
+}
+
+type LoggerHandler interface {
+	GetLogger(ctx context.Context) *slog.Logger
+}
+
 type Dependencies struct {
 	AuthClient  AuthHandler
 	UserClient  UserHandler
 	Metrics     MetricsREST
 	RateLimiter RateLimiterREST
 	AuthMW      AuthMiddlewareREST
+	LoggerMW    LoggerMiddlewareREST
+	Logger      LoggerHandler
 }
 
 type RESTServer struct {
@@ -58,10 +68,11 @@ func NewREST(deps Dependencies, cfg RESTServerConfig) *RESTServer {
 }
 
 func (r *RESTServer) Run() error {
-	restHandler := NewHandler(r.deps.Metrics, r.deps.AuthClient, r.deps.UserClient)
-	r.server.Handler = NewRouter(restHandler, r.deps.RateLimiter, r.deps.Metrics, r.deps.AuthMW)
+	restHandler := NewHandler(r.deps.Metrics, r.deps.AuthClient, r.deps.UserClient, r.deps.Logger)
+	r.server.Handler = NewRouter(restHandler, r.deps.LoggerMW, r.deps.RateLimiter, r.deps.Metrics, r.deps.AuthMW)
 
-	logger.Info.Printf("сервер слушает на: %s", r.server.Addr)
+	slog.Info("gRPC server started",
+		"address", r.server.Addr)
 
 	if err := r.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("ошибка HTTP сервера: %v", err)

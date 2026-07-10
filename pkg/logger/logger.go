@@ -1,20 +1,35 @@
 package logger
 
 import (
-	"log"
+	"log/slog"
 	"os"
 )
 
-var (
-	Info  *log.Logger
-	Warn  *log.Logger
-	Error *log.Logger
-)
+func SetupLogger(env, service string) {
+	var handler slog.Handler
 
-func Init(serviceName string) {
-	prefix := "[" + serviceName + "] "
+	switch env {
+	case "prod":
+		handler = slog.NewJSONHandler(os.Stdout,
+			&slog.HandlerOptions{
+				Level: slog.LevelInfo,
+			})
+	case "dev":
+		handler = slog.NewTextHandler(os.Stdout,
+			&slog.HandlerOptions{
+				Level:     slog.LevelDebug,
+				AddSource: true,
+			})
+	default:
+		handler = slog.NewTextHandler(os.Stdout,
+			&slog.HandlerOptions{
+				Level:     slog.LevelDebug,
+				AddSource: true,
+			})
+	}
 
-	Info = log.New(os.Stdout, prefix+"[INFO] ", log.LstdFlags)
-	Warn = log.New(os.Stdout, prefix+"[WARN] ", log.LstdFlags)
-	Error = log.New(os.Stderr, prefix+"[ERROR] ", log.LstdFlags|log.Lshortfile)
+	logger := slog.New(handler)
+	logger = logger.With("service", service)
+
+	slog.SetDefault(logger)
 }

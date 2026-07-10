@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"os/signal"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
-	"restaurant/services/auth/internal/delivery/grpc"
+	delivery "restaurant/services/auth/internal/delivery/grpc"
 	"restaurant/services/auth/internal/service"
 	"restaurant/services/auth/internal/storage/sqlite3"
 	"syscall"
@@ -18,16 +20,20 @@ func main() {
 	config.Load("auth")
 
 	/* Логгер */
-	logger.Init("Auth")
+	logger.SetupLogger("dev", "auth")
 
 	/* Хранилище refresh-token */
 	storage, err := sqlite3.New("data/tokens.db")
 	if err != nil {
-		logger.Error.Printf("ошибка создания хранилища: %v", err)
+		slog.Error("failed to create storage",
+			slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer func() {
 		if err := storage.Close(); err != nil {
-			logger.Warn.Printf("ошибка закрытия хранилища: %v", err)
+			slog.Warn("failed to close storage",
+				slog.String("error", err.Error()),
+				slog.String("storage_type", "sqlite3"))
 		}
 	}()
 
@@ -44,7 +50,10 @@ func main() {
 		config.Get[string]("AUTH_CERT", "certs/auth/server-cert.pem"),
 		config.Get[string]("AUTH_KEY", "certs/auth/server-key.pem"))
 	if err != nil {
-		logger.Error.Printf("ошибка создания mTLS: %v", err)
+		slog.Error("failed to create mTLS",
+			slog.String("error", err.Error()),
+			slog.String("type", "auth_server"))
+		os.Exit(1)
 	}
 
 	/* gRPC Server */
@@ -54,7 +63,9 @@ func main() {
 
 	go func() {
 		if err = srv.Run(); err != nil {
-			logger.Error.Printf("ошибка запуска gRPC сервера: %v", err)
+			slog.Error("failed to run gRPC server",
+				slog.String("error", err.Error()))
+			os.Exit(1)
 		}
 	}()
 
@@ -64,11 +75,12 @@ func main() {
 
 	<-ctx.Done()
 
-	logger.Info.Println("получен сигнал завершение сервера, останавливаем..")
+	slog.Info("got signal-notify")
 
 	if err = srv.Stop(); err != nil {
-		logger.Warn.Printf("программа завершилась не gracefully: %v", err)
+		slog.Warn("failed to gracefully shutdown",
+			slog.String("error", err.Error()))
 		return
 	}
-	logger.Info.Println("программа завершилась gracefully")
+	slog.Info("gracefully shutdown")
 }

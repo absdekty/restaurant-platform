@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"os/signal"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
 	"restaurant/services/gateway/internal/client"
-	"restaurant/services/gateway/internal/delivery/rest"
+	delivery "restaurant/services/gateway/internal/delivery/rest"
 	"restaurant/services/gateway/internal/delivery/rest/middleware"
 	"syscall"
 	"time"
@@ -18,7 +20,7 @@ func main() {
 	config.Load("gateway")
 
 	/* Логгер */
-	logger.Init("Gateway")
+	logger.SetupLogger("prod", "gateway")
 
 	/* TLS Clients */
 	clientAuthCreds, err := tls.ClientCreds(
@@ -27,29 +29,41 @@ func main() {
 		config.Get[string]("GATEWAY_KEY", "certs/gateway/server-key.pem"),
 		"auth")
 	if err != nil {
-		logger.Error.Printf("ошибка создания mTLS[auth]: %v", err)
-	}
+		slog.Error("failed to create mTLS",
+			slog.String("error", err.Error()),
+			slog.String("type", "auth_client"))
+		os.Exit(1)
 
+	}
 	clientUserCreds, err := tls.ClientCreds(
 		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
 		config.Get[string]("GATEWAY_CERT", "certs/gateway/server-cert.pem"),
 		config.Get[string]("GATEWAY_KEY", "certs/gateway/server-key.pem"),
 		"user")
 	if err != nil {
-		logger.Error.Printf("ошибка создания mTLS: %v[user]", err)
+		slog.Error("failed to create mTLS",
+			slog.String("error", err.Error()),
+			slog.String("type", "user_client"))
+		os.Exit(1)
 	}
 
 	/* gRPC auth-client */
 	authClient, err := client.NewAuthClient(clientAuthCreds, config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"))
 	if err != nil {
-		logger.Error.Printf("ошибка gRPC клиента: %v", err)
+		slog.Error("failed to create gRPC client",
+			slog.String("error", err.Error()),
+			slog.String("type", "auth"))
+		os.Exit(1)
 	}
 	defer authClient.Close()
 
 	/* gRPC user-client */
 	userClient, err := client.NewUserClient(clientUserCreds, config.Get[string]("USER_GRPC_LISTENER", "localhost:50052"))
 	if err != nil {
-		logger.Error.Printf("ошибка gRPC клиента: %v", err)
+		slog.Error("failed to create gRPC client",
+			slog.String("error", err.Error()),
+			slog.String("type", "user"))
+		os.Exit(1)
 	}
 	defer userClient.Close()
 
@@ -59,6 +73,7 @@ func main() {
 		float64(config.Get[int]("RATE_LIMITER_RPS_TOTAL", 100)),
 		config.Get[int]("RATE_LIMITER_RPS_BURST", 200))
 	authMW := middleware.NewAuth(authClient)
+	loggerMW := middleware.NewLogger()
 
 	/* REST сервер */
 	restServer := delivery.NewREST(
@@ -67,7 +82,9 @@ func main() {
 			UserClient:  userClient,
 			Metrics:     metrics,
 			RateLimiter: rateLimiter,
-			AuthMW:      authMW},
+			AuthMW:      authMW,
+			LoggerMW:    loggerMW,
+			Logger:      loggerMW},
 		delivery.RESTServerConfig{
 			Addr:         config.Get[string]("GATEWAY_ADDR", "localhost:8080"),
 			ReadTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_READ", 10)) * time.Second,
@@ -78,7 +95,9 @@ func main() {
 
 	go func() {
 		if err := restServer.Run(); err != nil {
-			logger.Error.Printf("ошибка остановки сервера: %v", err)
+			slog.Error("failed to run REST server",
+				slog.String("error", err.Error()))
+			os.Exit(1)
 		}
 	}()
 
@@ -87,11 +106,12 @@ func main() {
 
 	<-ctx.Done()
 
-	logger.Info.Println("получен сигнал завершение сервера, останавливаем..")
+	slog.Info("got signal-notify")
 
 	if err = restServer.Stop(); err != nil {
-		logger.Warn.Printf("программа завершилась не gracefully: %v", err)
+		slog.Warn("failed to gracefully shutdown",
+			slog.String("error", err.Error()))
 		return
 	}
-	logger.Info.Println("программа завершилась gracefully")
+	slog.Info("gracefully shutdown")
 }

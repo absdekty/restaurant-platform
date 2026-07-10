@@ -4,12 +4,14 @@ import (
 	"context"
 	"time"
 
+	"restaurant/pkg/interceptors"
+	"restaurant/services/gateway/internal/model"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
-	"restaurant/services/gateway/internal/model"
 
 	userv1 "restaurant/api/proto/user/v1"
 )
@@ -41,10 +43,11 @@ func NewUserClient(creds credentials.TransportCredentials, addr string) (*UserCl
 		PermitWithoutStream: true,
 	}
 
-	conn, err := grpc.Dial(addr,
+	conn, err := grpc.NewClient(addr,
 		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultServiceConfig(serviceConfig),
-		grpc.WithKeepaliveParams(keepaliveParams))
+		grpc.WithKeepaliveParams(keepaliveParams),
+		grpc.WithUnaryInterceptor(interceptors.TraceClient()))
 	if err != nil {
 		return nil, err
 	}
