@@ -32,9 +32,29 @@ task run-all-win
 # Запуск определенного сервиса
 task run SERVICE=auth
 
+# Сбилдить все микросервисы
+task build-all-win
+
+# Запустить сбилженные микросервисы
+task run-builded-win
+
 # Тесты
 task tests
 task test SERVICE=auth
+
+# Очистка данных
+
+# .db .pem .exe
+task clean 
+
+# .db
+task clean-db
+
+# .pem
+task clean-certs
+
+# .exe
+task clean-exe
 ```
 
 ## Gateway API Endpoints
@@ -78,7 +98,16 @@ curl -X POST localhost:8080/logout \
 curl -X GET localhost:8080/metrics
 ```
 
-## Установка
+## Установка и запуск
+```
+# Установка:
 git clone https://github.com/absdekty/restaurant-platform.git
 
-Как использовать? [тык](#taskfile)
+# Установка mTLS сертификатов
+task gen-certs-win
+
+# Запуск(выберите вариант):
+task run-all-win # А - Сразу запускаем проект
+# ИЛИ
+task build-all-win && task run-builded-win # Б - Билдим и запускаем
+```

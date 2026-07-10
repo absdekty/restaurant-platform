@@ -1,4 +1,4 @@
-package delivery
+package middleware
 
 import (
 	"net/http"

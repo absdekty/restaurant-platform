@@ -7,18 +7,21 @@ import (
 	"strconv"
 )
 
-func Load(serviceName string) {
+func Load(serviceName ...string) {
 	dir := "./configs"
 
-	files := []string{
+	files := make([]string, 0, 2+len(serviceName)*2)
+	files = append(files,
 		filepath.Join(dir, ".env"),
-		filepath.Join(dir, ".env.local"),
-	}
+		filepath.Join(dir, ".env.local"))
+	for _, name := range serviceName {
+		if name == "" {
+			continue
+		}
 
-	if serviceName != "" {
 		files = append(files,
-			filepath.Join(dir, ".env."+serviceName),
-			filepath.Join(dir, ".env."+serviceName+".local"))
+			filepath.Join(dir, ".env."+name),
+			filepath.Join(dir, ".env."+name+".local"))
 	}
 
 	for _, file := range files {

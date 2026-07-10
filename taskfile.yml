@@ -35,6 +35,21 @@ tasks:
       - cmd /c start cmd /k "go run services/auth/cmd/main.go"
       - cmd /c start cmd /k "go run services/user/cmd/main.go"
 
+  build-all-win:
+    desc: "Забилдить приложение"
+    cmds:
+      - go build -o bin/gateway.exe ./services/gateway/cmd/main.go
+      - go build -o bin/auth.exe ./services/auth/cmd/main.go
+      - go build -o bin/user.exe ./services/user/cmd/main.go
+      - echo "Запускать через run-builded-win"
+
+  run-builded-win:
+    desc: "Запустить приложения"
+    cmds:
+      - cmd /c start cmd /k ".\bin\gateway.exe"
+      - cmd /c start cmd /k ".\bin\auth.exe"
+      - cmd /c start cmd /k ".\bin\user.exe"
+
   gen-certs-win:
     desc: "Генерация mTLS сертификатов"
     cmds:
@@ -57,3 +72,27 @@ tasks:
         openssl req -new -key certs/gateway/client-key.pem -out certs/gateway/client.csr -subj "/CN=gateway"
         openssl x509 -req -days 365 -in certs/gateway/client.csr -CA certs/ca/ca-cert.pem -CAkey certs/ca/ca-key.pem -out certs/gateway/client-cert.pem -extfile certs/gateway/san.ext
       - rm -f certs/*/*.csr certs/*/san.ext
+
+  clean:
+    desc: "Очищает сборку(удаляет .db .exe .pem)"
+    cmds:
+      - rm -f *.db
+      - rm -f certs/*/*.pem
+      - rm -rf certs/*/
+      - rm -f bin/*.exe
+
+  clean-db:
+    desc: "Очищает сборку(удаляет .db)"
+    cmds:
+      - rm -f data/*.db
+
+  clean-certs:
+    desc: "Очищает сборку(удаляет .pem)"
+    cmds:
+      - rm -f certs/*/*.pem
+      - rm -rf certs/*/
+
+  clean-exe:
+    desc: "Очищает сборку(удаляет .exe)"
+    cmds:
+      - rm -f bin/*.exe

@@ -1,4 +1,4 @@
-package delivery
+package middleware
 
 import (
 	"context"
@@ -13,8 +13,6 @@ const UserIDKey contextKey = "userID"
 
 type AuthService interface {
 	ValidateToken(ctx context.Context, token string) (string, error)
-	RefreshTokens(ctx context.Context, token string) (string, string, int32, error)
-	RevokeRefreshToken(ctx context.Context, token string) error
 }
 
 type Auth struct {
@@ -49,14 +47,6 @@ func (a *Auth) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-func (a *Auth) RefreshTokens(ctx context.Context, token string) (string, string, int32, error) {
-	return a.authService.RefreshTokens(ctx, token)
-}
-
-func (a *Auth) RevokeRefreshToken(ctx context.Context, token string) error {
-	return a.authService.RevokeRefreshToken(ctx, token)
 }
 
 func GetUserID(ctx context.Context) (string, error) {

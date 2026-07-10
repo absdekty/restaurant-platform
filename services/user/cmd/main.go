@@ -23,7 +23,7 @@ func main() {
 	logger.Init("User")
 
 	/* Хранилище юзеров */
-	storage, err := sqlite3.New("users.db")
+	storage, err := sqlite3.New("data/users.db")
 	if err != nil {
 		logger.Error.Printf("ошибка создания хранилища: %v", err)
 	}
@@ -67,7 +67,7 @@ func main() {
 
 	/* gRPC Server */
 	srv := delivery.NewGRPCServer(serverCreds, userService, authClient,
-		config.Get[string]("USER_GRPC_LISTENER", ":50052"),
+		config.Get[string]("USER_GRPC_LISTENER", "localhost:50052"),
 		time.Duration(config.Get[int]("USER_SHUTDOWN", 30))*time.Second)
 
 	go func() {

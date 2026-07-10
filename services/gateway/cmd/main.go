@@ -8,6 +8,7 @@ import (
 	"restaurant/pkg/tls"
 	"restaurant/services/gateway/internal/client"
 	"restaurant/services/gateway/internal/delivery/rest"
+	"restaurant/services/gateway/internal/delivery/rest/middleware"
 	"syscall"
 	"time"
 )
@@ -52,14 +53,28 @@ func main() {
 	}
 	defer userClient.Close()
 
+	/* REST Middlewares */
+	metrics := middleware.NewMetrics()
+	rateLimiter := middleware.NewRateLimiter(
+		float64(config.Get[int]("RATE_LIMITER_RPS_TOTAL", 100)),
+		config.Get[int]("RATE_LIMITER_RPS_BURST", 200))
+	authMW := middleware.NewAuth(authClient)
+
 	/* REST сервер */
-	restServer := delivery.NewREST(authClient, userClient, delivery.RESTServerConfig{
-		Addr:         config.Get[string]("GATEWAY_HOST", "localhost") + ":" + config.Get[string]("GATEWAY_PORT", "8080"),
-		ReadTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_READ", 10)) * time.Second,
-		WriteTimeout: time.Duration(config.Get[int]("GATEWAY_TIMEOUT_WRITE", 10)) * time.Second,
-		IdleTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_IDLE", 30)) * time.Second,
-		GSTime:       time.Duration(config.Get[int]("GATEWAY_SHUTDOWN", 30)) * time.Second,
-	})
+	restServer := delivery.NewREST(
+		delivery.Dependencies{
+			AuthClient:  authClient,
+			UserClient:  userClient,
+			Metrics:     metrics,
+			RateLimiter: rateLimiter,
+			AuthMW:      authMW},
+		delivery.RESTServerConfig{
+			Addr:         config.Get[string]("GATEWAY_ADDR", "localhost:8080"),
+			ReadTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_READ", 10)) * time.Second,
+			WriteTimeout: time.Duration(config.Get[int]("GATEWAY_TIMEOUT_WRITE", 10)) * time.Second,
+			IdleTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_IDLE", 30)) * time.Second,
+			GSTime:       time.Duration(config.Get[int]("GATEWAY_SHUTDOWN", 30)) * time.Second,
+		})
 
 	go func() {
 		if err := restServer.Run(); err != nil {
