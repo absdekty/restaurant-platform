@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
 	"restaurant/services/auth/internal/model"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 /* Интерфейс для хранения refresh-token */
@@ -60,11 +61,11 @@ func (j *JWTService) ValidateAccessToken(tokenStr string) (string, error) {
 	claims := &JWTClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
 		return j.secretKey, nil
-	})
+	},
+		jwt.WithValidMethods([]string{"HS256"}),
+		jwt.WithIssuedAt(),
+	)
 
 	if err != nil {
 		return "", fmt.Errorf("failed to parse access token: %w", err)
@@ -72,10 +73,6 @@ func (j *JWTService) ValidateAccessToken(tokenStr string) (string, error) {
 
 	if !token.Valid {
 		return "", fmt.Errorf("invalid access token")
-	}
-
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
-		return "", fmt.Errorf("access token expired")
 	}
 
 	if claims.TokenType != "access" {
@@ -90,11 +87,11 @@ func (j *JWTService) ValidateRefreshToken(ctx context.Context, tokenStr string) 
 	claims := &JWTClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
 		return j.secretKey, nil
-	})
+	},
+		jwt.WithValidMethods([]string{"HS256"}),
+		jwt.WithIssuedAt(),
+	)
 
 	if err != nil {
 		return "", fmt.Errorf("failed to parse refresh token: %w", err)
@@ -102,10 +99,6 @@ func (j *JWTService) ValidateRefreshToken(ctx context.Context, tokenStr string) 
 
 	if !token.Valid {
 		return "", fmt.Errorf("invalid refresh token")
-	}
-
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
-		return "", fmt.Errorf("refresh token expired")
 	}
 
 	if claims.TokenType != "refresh" {
