@@ -16,6 +16,6 @@ func SetupMiddleware(r *chi.Mux, Logger Middleware, rateLimiter Middleware, metr
 	r.Use(middleware.Recoverer)
 	r.Use(Logger.Middleware)
 	r.Use(middleware.Timeout(time.Second * 15))
-	r.Use(rateLimiter.Middleware)
 	r.Use(metrics.Middleware)
+	r.Use(rateLimiter.Middleware)
 }
