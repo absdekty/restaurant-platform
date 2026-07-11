@@ -52,7 +52,16 @@ func main() {
 	}
 
 	/* gRPC auth-client */
-	authClient, err := client.NewAuthClient(clientAuthCreds, cfg.AuthAddr)
+	authClient, err := client.NewAuthClient(clientAuthCreds, cfg.AuthAddr,
+		client.AuthConfig{
+			RetryMaxAttempts:       cfg.Gateway.GRPCAuthClient.RetryMaxAttempts,
+			RetryInitialBackoff:    cfg.Gateway.GRPCAuthClient.RetryInitialBackoff,
+			RetryMaxBackoff:        cfg.Gateway.GRPCAuthClient.RetryMaxBackoff,
+			RetryBackoffMultiplier: cfg.Gateway.GRPCAuthClient.RetryBackoffMultiplier,
+			KeepaliveTime:          cfg.Gateway.GRPCAuthClient.KeepaliveTime,
+			KeepaliveTimeout:       cfg.Gateway.GRPCAuthClient.KeepaliveTimeout,
+			KeepalivePermitWithout: cfg.Gateway.GRPCAuthClient.KeepalivePermitWithout,
+		})
 	if err != nil {
 		slog.Error("failed to create gRPC client",
 			slog.String("error", err.Error()),
@@ -62,7 +71,16 @@ func main() {
 	defer authClient.Close()
 
 	/* gRPC user-client */
-	userClient, err := client.NewUserClient(clientUserCreds, cfg.UserAddr)
+	userClient, err := client.NewUserClient(clientUserCreds, cfg.UserAddr,
+		client.UserConfig{
+			RetryMaxAttempts:       cfg.Gateway.GRPCUserClient.RetryMaxAttempts,
+			RetryInitialBackoff:    cfg.Gateway.GRPCUserClient.RetryInitialBackoff,
+			RetryMaxBackoff:        cfg.Gateway.GRPCUserClient.RetryMaxBackoff,
+			RetryBackoffMultiplier: cfg.Gateway.GRPCUserClient.RetryBackoffMultiplier,
+			KeepaliveTime:          cfg.Gateway.GRPCUserClient.KeepaliveTime,
+			KeepaliveTimeout:       cfg.Gateway.GRPCUserClient.KeepaliveTimeout,
+			KeepalivePermitWithout: cfg.Gateway.GRPCUserClient.KeepalivePermitWithout,
+		})
 	if err != nil {
 		slog.Error("failed to create gRPC client",
 			slog.String("error", err.Error()),

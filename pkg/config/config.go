@@ -18,6 +18,17 @@ type AppConfig struct {
 	CACert   string `mapstructure:"ca_cert"   validate:"required,filepath"`
 }
 
+/* gRPC-Clients */
+type GRPCClientConfig struct {
+	RetryMaxAttempts       int           `mapstructure:"retry_max_attempts"        validate:"required,min=1"`
+	RetryInitialBackoff    string        `mapstructure:"retry_initial_backoff"     validate:"required"`
+	RetryMaxBackoff        string        `mapstructure:"retry_max_backoff"         validate:"required"`
+	RetryBackoffMultiplier float64       `mapstructure:"retry_backoff_multiplier"  validate:"required,min=1"`
+	KeepaliveTime          time.Duration `mapstructure:"keepalive_time"            validate:"required,min=1s"`
+	KeepaliveTimeout       time.Duration `mapstructure:"keepalive_timeout"         validate:"required,min=1s"`
+	KeepalivePermitWithout bool          `mapstructure:"keepalive_permit_without_stream"`
+}
+
 /* Gateway */
 type GatewayConfig struct {
 	AppConfig `mapstructure:",squash"`
@@ -25,15 +36,17 @@ type GatewayConfig struct {
 }
 
 type GatewaySettings struct {
-	Addr            string        `mapstructure:"addr"             validate:"required,hostname_port"`
-	TimeoutRead     time.Duration `mapstructure:"timeout_read"     validate:"required,min=1s"`
-	TimeoutWrite    time.Duration `mapstructure:"timeout_write"    validate:"required,min=1s"`
-	TimeoutIdle     time.Duration `mapstructure:"timeout_idle"     validate:"required,min=1s"`
-	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert            string        `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey         string        `mapstructure:"cert_key"         validate:"required,filepath"`
-	RPS             int           `mapstructure:"rps"              validate:"required,min=1"`
-	Burst           int           `mapstructure:"rps_burst"        validate:"required,min=1"`
+	Addr            string           `mapstructure:"addr"             validate:"required,hostname_port"`
+	TimeoutRead     time.Duration    `mapstructure:"timeout_read"     validate:"required,min=1s"`
+	TimeoutWrite    time.Duration    `mapstructure:"timeout_write"    validate:"required,min=1s"`
+	TimeoutIdle     time.Duration    `mapstructure:"timeout_idle"     validate:"required,min=1s"`
+	ShutdownTimeout time.Duration    `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert            string           `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey         string           `mapstructure:"cert_key"         validate:"required,filepath"`
+	RPS             int              `mapstructure:"rps"              validate:"required,min=1"`
+	Burst           int              `mapstructure:"rps_burst"        validate:"required,min=1"`
+	GRPCAuthClient  GRPCClientConfig `mapstructure:"gRPCAuthClient"  validate:"required"`
+	GRPCUserClient  GRPCClientConfig `mapstructure:"gRPCUserClient"  validate:"required"`
 }
 
 /* Auth */
@@ -43,12 +56,18 @@ type AuthConfig struct {
 }
 
 type AuthSettings struct {
-	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert            string        `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey         string        `mapstructure:"cert_key"         validate:"required,filepath"`
-	SecretKey       string        `mapstructure:"secret_key"   validate:"required,min=32"`
-	AccessTTL       time.Duration `mapstructure:"access_ttl"   validate:"required,min=15m"`
-	RefreshTTL      time.Duration `mapstructure:"refresh_ttl"  validate:"required,min=168h"`
+	ShutdownTimeout      time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert                 string        `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey              string        `mapstructure:"cert_key"         validate:"required,filepath"`
+	SecretKey            string        `mapstructure:"secret_key"   validate:"required,min=32"`
+	AccessTTL            time.Duration `mapstructure:"access_ttl"   validate:"required,min=15m"`
+	RefreshTTL           time.Duration `mapstructure:"refresh_ttl"  validate:"required,min=168h"`
+	GRPCMaxRecvMsgSize   int           `mapstructure:"grpc_max_recv_msg_size" validate:"required,min=1048576"`
+	GRPCMaxSendMsgSize   int           `mapstructure:"grpc_max_send_msg_size" validate:"required,min=1048576"`
+	GRPCConnTimeout      time.Duration `mapstructure:"grpc_conn_timeout"        validate:"required,min=1s"`
+	GRPCMaxConnIdle      time.Duration `mapstructure:"grpc_max_conn_idle"       validate:"required,min=1s"`
+	GRPCKeepaliveTime    time.Duration `mapstructure:"grpc_keepalive_time"      validate:"required,min=1s"`
+	GRPCKeepaliveTimeout time.Duration `mapstructure:"grpc_keepalive_timeout"   validate:"required,min=1s"`
 }
 
 /* User */
@@ -58,9 +77,16 @@ type UserConfig struct {
 }
 
 type UserSettings struct {
-	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert            string        `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey         string        `mapstructure:"cert_key"         validate:"required,filepath"`
+	ShutdownTimeout      time.Duration    `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert                 string           `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey              string           `mapstructure:"cert_key"         validate:"required,filepath"`
+	GRPCMaxRecvMsgSize   int              `mapstructure:"grpc_max_recv_msg_size" validate:"required,min=1048576"`
+	GRPCMaxSendMsgSize   int              `mapstructure:"grpc_max_send_msg_size" validate:"required,min=1048576"`
+	GRPCConnTimeout      time.Duration    `mapstructure:"grpc_conn_timeout"        validate:"required,min=1s"`
+	GRPCMaxConnIdle      time.Duration    `mapstructure:"grpc_max_conn_idle"       validate:"required,min=1s"`
+	GRPCKeepaliveTime    time.Duration    `mapstructure:"grpc_keepalive_time"      validate:"required,min=1s"`
+	GRPCKeepaliveTimeout time.Duration    `mapstructure:"grpc_keepalive_timeout"   validate:"required,min=1s"`
+	GRPCAuthClient       GRPCClientConfig `mapstructure:"gRPCAuthClient"  validate:"required"`
 }
 
 func Load(path, envPrefix string, cfg any) error {

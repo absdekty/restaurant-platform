@@ -69,7 +69,16 @@ func main() {
 	}
 
 	/* gRPC-auth client */
-	authClient, err := client.NewAuthClient(clientCreds, cfg.AuthAddr)
+	authClient, err := client.NewAuthClient(clientCreds, cfg.AuthAddr,
+		client.AuthConfig{
+			RetryMaxAttempts:       cfg.User.GRPCAuthClient.RetryMaxAttempts,
+			RetryInitialBackoff:    cfg.User.GRPCAuthClient.RetryInitialBackoff,
+			RetryMaxBackoff:        cfg.User.GRPCAuthClient.RetryMaxBackoff,
+			RetryBackoffMultiplier: cfg.User.GRPCAuthClient.RetryBackoffMultiplier,
+			KeepaliveTime:          cfg.User.GRPCAuthClient.KeepaliveTime,
+			KeepaliveTimeout:       cfg.User.GRPCAuthClient.KeepaliveTimeout,
+			KeepalivePermitWithout: cfg.User.GRPCAuthClient.KeepalivePermitWithout,
+		})
 	if err != nil {
 		slog.Error("failed to run gRPC client",
 			slog.String("error", err.Error()))
@@ -85,7 +94,15 @@ func main() {
 
 	/* gRPC Server */
 	srv := delivery.NewGRPCServer(serverCreds, userService, authClient,
-		cfg.UserAddr, cfg.User.ShutdownTimeout)
+		cfg.UserAddr, cfg.User.ShutdownTimeout,
+		delivery.OptionConfig{
+			MaxReceivedSize:   cfg.User.GRPCMaxRecvMsgSize,
+			MaxSendSize:       cfg.User.GRPCMaxSendMsgSize,
+			ConnectionTimeout: cfg.User.GRPCConnTimeout,
+			MaxConnectionIdle: cfg.User.GRPCMaxConnIdle,
+			KeepAliveTime:     cfg.User.GRPCKeepaliveTime,
+			KeepAliveTimeout:  cfg.User.GRPCKeepaliveTimeout,
+		})
 
 	go func() {
 		if err = srv.Run(); err != nil {

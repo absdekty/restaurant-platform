@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"restaurant/pkg/interceptors"
@@ -21,26 +22,40 @@ type UserClient struct {
 	conn   *grpc.ClientConn
 }
 
-func NewUserClient(creds credentials.TransportCredentials, addr string) (*UserClient, error) {
-	serviceConfig := `{
-		"methodConfig": [
-			{
-				"name": [{"service": "user.v1.UserService"}],
-				"retryPolicy": {
-					"maxAttempts": 3,
-					"initialBackoff": "0.1s",
-					"maxBackoff": "1s",
-					"backoffMultiplier": 2,
-					"retryableStatusCodes": ["UNAVAILABLE"]
-				}
+type UserConfig struct {
+	RetryMaxAttempts       int
+	RetryInitialBackoff    string
+	RetryMaxBackoff        string
+	RetryBackoffMultiplier float64
+
+	KeepaliveTime          time.Duration
+	KeepaliveTimeout       time.Duration
+	KeepalivePermitWithout bool
+}
+
+func NewUserClient(creds credentials.TransportCredentials, addr string, config UserConfig) (*UserClient, error) {
+	serviceConfig := fmt.Sprintf(`{
+		"methodConfig": [{
+			"name": [{"service": "auth.v3.AuthService"}],
+			"retryPolicy": {
+				"maxAttempts": %d,
+				"initialBackoff": "%s",
+				"maxBackoff": "%s",
+				"backoffMultiplier": %.1f,
+				"retryableStatusCodes": ["UNAVAILABLE"]
 			}
-		]
-	}`
+		}]
+	}`,
+		config.RetryMaxAttempts,
+		config.RetryInitialBackoff,
+		config.RetryMaxBackoff,
+		config.RetryBackoffMultiplier,
+	)
 
 	keepaliveParams := keepalive.ClientParameters{
-		Time:                10 * time.Second,
-		Timeout:             1 * time.Second,
-		PermitWithoutStream: true,
+		Time:                config.KeepaliveTime,
+		Timeout:             config.KeepaliveTimeout,
+		PermitWithoutStream: config.KeepalivePermitWithout,
 	}
 
 	conn, err := grpc.NewClient(addr,

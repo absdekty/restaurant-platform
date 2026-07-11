@@ -62,7 +62,15 @@ func main() {
 
 	/* gRPC Server */
 	srv := delivery.NewGRPCServer(creds, jwtService,
-		cfg.AuthAddr, cfg.Auth.ShutdownTimeout)
+		cfg.AuthAddr, cfg.Auth.ShutdownTimeout,
+		delivery.OptionConfig{
+			MaxReceivedSize:   cfg.Auth.GRPCMaxRecvMsgSize,
+			MaxSendSize:       cfg.Auth.GRPCMaxSendMsgSize,
+			ConnectionTimeout: cfg.Auth.GRPCConnTimeout,
+			MaxConnectionIdle: cfg.Auth.GRPCMaxConnIdle,
+			KeepAliveTime:     cfg.Auth.GRPCKeepaliveTime,
+			KeepAliveTimeout:  cfg.Auth.GRPCKeepaliveTimeout,
+		})
 
 	go func() {
 		if err = srv.Run(); err != nil {

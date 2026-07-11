@@ -21,15 +21,26 @@ type gRPCServer struct {
 	authService AuthService
 	gsTime      time.Duration
 	server      *grpc.Server
+	config      OptionConfig
 }
 
-func NewGRPCServer(creds credentials.TransportCredentials, userService UserService, authService AuthService, addr string, gsTime time.Duration) *gRPCServer {
+type OptionConfig struct {
+	MaxReceivedSize   int
+	MaxSendSize       int
+	ConnectionTimeout time.Duration
+	MaxConnectionIdle time.Duration
+	KeepAliveTime     time.Duration
+	KeepAliveTimeout  time.Duration
+}
+
+func NewGRPCServer(creds credentials.TransportCredentials, userService UserService, authService AuthService, addr string, gsTime time.Duration, config OptionConfig) *gRPCServer {
 	return &gRPCServer{
 		addr:        addr,
 		creds:       creds,
 		userService: userService,
 		authService: authService,
 		gsTime:      gsTime,
+		config:      config,
 	}
 }
 
@@ -43,13 +54,13 @@ func (s *gRPCServer) Run() error {
 
 	opts := []grpc.ServerOption{
 		grpc.Creds(s.creds),
-		grpc.MaxRecvMsgSize(1024 * 1024),
-		grpc.MaxSendMsgSize(1024 * 1024),
-		grpc.ConnectionTimeout(10 * time.Second),
+		grpc.MaxRecvMsgSize(s.config.MaxReceivedSize),
+		grpc.MaxSendMsgSize(s.config.MaxSendSize),
+		grpc.ConnectionTimeout(s.config.ConnectionTimeout),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle: 5 * time.Minute,
-			Time:              1 * time.Minute,
-			Timeout:           20 * time.Second,
+			MaxConnectionIdle: s.config.MaxConnectionIdle,
+			Time:              s.config.KeepAliveTime,
+			Timeout:           s.config.KeepAliveTimeout,
 		}),
 		grpc.ChainUnaryInterceptor(
 			interceptors.Logger(),
