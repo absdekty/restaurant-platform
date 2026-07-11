@@ -7,3 +7,4 @@ data/*
 *.db
 *.local
 .vscode
+*.local.yaml

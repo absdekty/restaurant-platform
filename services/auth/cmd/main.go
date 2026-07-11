@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,15 +13,20 @@ import (
 	"restaurant/services/auth/internal/service"
 	"restaurant/services/auth/internal/storage/sqlite3"
 	"syscall"
-	"time"
 )
 
 func main() {
 	/* Конфиг */
-	config.Load("auth")
+	cfg := &config.AuthConfig{}
+	if err := config.Load("./configs/config.yaml", "ENV", cfg); err != nil {
+		log.Fatalf("config load: %v", err)
+	}
 
 	/* Логгер */
-	logger.SetupLogger("dev", "auth")
+	logger.SetupLogger(cfg.ENV, "auth")
+
+	slog.Info("Server data:",
+		slog.String("ENV", cfg.ENV))
 
 	/* Хранилище refresh-token */
 	storage, err := sqlite3.New("data/tokens.db")
@@ -39,16 +45,14 @@ func main() {
 
 	/* JWT-Service */
 	jwtService := service.NewJWT(
-		config.Get[string]("AUTH_SECRET_KEY", "default-secret-key-min-32-chars"),
-		time.Duration(config.Get[int]("AUTH_ACCESS_TTL", 15))*time.Minute,
-		time.Duration(config.Get[int]("AUTH_REFRESH_TTL", 7))*time.Hour*24,
+		cfg.Auth.SecretKey,
+		cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL,
 		storage)
 
 	/* TLS Server */
 	creds, err := tls.ServerCreds(
-		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
-		config.Get[string]("AUTH_CERT", "certs/auth/server-cert.pem"),
-		config.Get[string]("AUTH_KEY", "certs/auth/server-key.pem"))
+		cfg.CACert,
+		cfg.Auth.Cert, cfg.Auth.CertKey)
 	if err != nil {
 		slog.Error("failed to create mTLS",
 			slog.String("error", err.Error()),
@@ -58,8 +62,15 @@ func main() {
 
 	/* gRPC Server */
 	srv := delivery.NewGRPCServer(creds, jwtService,
-		config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"),
-		time.Duration(config.Get[int]("AUTH_SHUTDOWN", 30))*time.Second)
+		cfg.AuthAddr, cfg.Auth.ShutdownTimeout,
+		delivery.OptionConfig{
+			MaxReceivedSize:   cfg.Auth.GRPCMaxRecvMsgSize,
+			MaxSendSize:       cfg.Auth.GRPCMaxSendMsgSize,
+			ConnectionTimeout: cfg.Auth.GRPCConnTimeout,
+			MaxConnectionIdle: cfg.Auth.GRPCMaxConnIdle,
+			KeepAliveTime:     cfg.Auth.GRPCKeepaliveTime,
+			KeepAliveTimeout:  cfg.Auth.GRPCKeepaliveTimeout,
+		})
 
 	go func() {
 		if err = srv.Run(); err != nil {
