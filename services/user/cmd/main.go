@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -14,15 +15,20 @@ import (
 	"restaurant/services/user/internal/storage/sqlite3"
 	"restaurant/services/user/pkg/hasher"
 	"syscall"
-	"time"
 )
 
 func main() {
 	/* Конфиг */
-	config.Load("user")
+	cfg := &config.UserConfig{}
+	if err := config.Load("./configs/config.yaml", "ENV", cfg); err != nil {
+		log.Fatalf("config load: %v", err)
+	}
 
 	/* Логгер */
-	logger.SetupLogger("dev", "User")
+	logger.SetupLogger(cfg.ENV, "user")
+
+	slog.Info("Server data:",
+		slog.String("ENV", cfg.ENV))
 
 	/* Хранилище юзеров */
 	storage, err := sqlite3.New("data/users.db")
@@ -41,9 +47,8 @@ func main() {
 
 	/* TLS Client */
 	clientCreds, err := tls.ClientCreds(
-		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
-		config.Get[string]("USER_CERT", "certs/user/server-cert.pem"),
-		config.Get[string]("USER_KEY", "certs/user/server-key.pem"),
+		cfg.CACert,
+		cfg.User.Cert, cfg.User.CertKey,
 		"auth")
 	if err != nil {
 		slog.Error("failed to create mTLS",
@@ -54,9 +59,8 @@ func main() {
 
 	/* TLS Server */
 	serverCreds, err := tls.ServerCreds(
-		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
-		config.Get[string]("USER_CERT", "certs/user/server-cert.pem"),
-		config.Get[string]("USER_KEY", "certs/user/server-key.pem"))
+		cfg.CACert,
+		cfg.User.Cert, cfg.User.CertKey)
 	if err != nil {
 		slog.Error("failed to create mTLS",
 			slog.String("error", err.Error()),
@@ -65,7 +69,7 @@ func main() {
 	}
 
 	/* gRPC-auth client */
-	authClient, err := client.NewAuthClient(clientCreds, config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"))
+	authClient, err := client.NewAuthClient(clientCreds, cfg.AuthAddr)
 	if err != nil {
 		slog.Error("failed to run gRPC client",
 			slog.String("error", err.Error()))
@@ -81,8 +85,7 @@ func main() {
 
 	/* gRPC Server */
 	srv := delivery.NewGRPCServer(serverCreds, userService, authClient,
-		config.Get[string]("USER_GRPC_LISTENER", "localhost:50052"),
-		time.Duration(config.Get[int]("USER_SHUTDOWN", 30))*time.Second)
+		cfg.UserAddr, cfg.User.ShutdownTimeout)
 
 	go func() {
 		if err = srv.Run(); err != nil {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,21 +13,25 @@ import (
 	delivery "restaurant/services/gateway/internal/delivery/rest"
 	"restaurant/services/gateway/internal/delivery/rest/middleware"
 	"syscall"
-	"time"
 )
 
 func main() {
 	/* Конфиг */
-	config.Load("gateway")
+	cfg := &config.GatewayConfig{}
+	if err := config.Load("./configs/config.yaml", "ENV", cfg); err != nil {
+		log.Fatalf("config load: %v", err)
+	}
 
 	/* Логгер */
-	logger.SetupLogger("prod", "gateway")
+	logger.SetupLogger(cfg.ENV, "gateway")
+
+	slog.Info("Server data:",
+		slog.String("ENV", cfg.ENV))
 
 	/* TLS Clients */
 	clientAuthCreds, err := tls.ClientCreds(
-		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
-		config.Get[string]("GATEWAY_CERT", "certs/gateway/server-cert.pem"),
-		config.Get[string]("GATEWAY_KEY", "certs/gateway/server-key.pem"),
+		cfg.CACert,
+		cfg.Gateway.Cert, cfg.Gateway.CertKey,
 		"auth")
 	if err != nil {
 		slog.Error("failed to create mTLS",
@@ -36,9 +41,8 @@ func main() {
 
 	}
 	clientUserCreds, err := tls.ClientCreds(
-		config.Get[string]("CA_CERT", "certs/ca/ca-cert.pem"),
-		config.Get[string]("GATEWAY_CERT", "certs/gateway/server-cert.pem"),
-		config.Get[string]("GATEWAY_KEY", "certs/gateway/server-key.pem"),
+		cfg.CACert,
+		cfg.Gateway.Cert, cfg.Gateway.CertKey,
 		"user")
 	if err != nil {
 		slog.Error("failed to create mTLS",
@@ -48,7 +52,7 @@ func main() {
 	}
 
 	/* gRPC auth-client */
-	authClient, err := client.NewAuthClient(clientAuthCreds, config.Get[string]("AUTH_GRPC_LISTENER", "localhost:50051"))
+	authClient, err := client.NewAuthClient(clientAuthCreds, cfg.AuthAddr)
 	if err != nil {
 		slog.Error("failed to create gRPC client",
 			slog.String("error", err.Error()),
@@ -58,7 +62,7 @@ func main() {
 	defer authClient.Close()
 
 	/* gRPC user-client */
-	userClient, err := client.NewUserClient(clientUserCreds, config.Get[string]("USER_GRPC_LISTENER", "localhost:50052"))
+	userClient, err := client.NewUserClient(clientUserCreds, cfg.UserAddr)
 	if err != nil {
 		slog.Error("failed to create gRPC client",
 			slog.String("error", err.Error()),
@@ -70,8 +74,8 @@ func main() {
 	/* REST Middlewares */
 	metrics := middleware.NewMetrics()
 	rateLimiter := middleware.NewRateLimiter(
-		float64(config.Get[int]("RATE_LIMITER_RPS_TOTAL", 100)),
-		config.Get[int]("RATE_LIMITER_RPS_BURST", 200))
+		float64(cfg.Gateway.RPS),
+		cfg.Gateway.Burst)
 	authMW := middleware.NewAuth(authClient)
 	loggerMW := middleware.NewLogger()
 
@@ -86,11 +90,11 @@ func main() {
 			LoggerMW:    loggerMW,
 			Logger:      loggerMW},
 		delivery.RESTServerConfig{
-			Addr:         config.Get[string]("GATEWAY_ADDR", "localhost:8080"),
-			ReadTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_READ", 10)) * time.Second,
-			WriteTimeout: time.Duration(config.Get[int]("GATEWAY_TIMEOUT_WRITE", 10)) * time.Second,
-			IdleTimeout:  time.Duration(config.Get[int]("GATEWAY_TIMEOUT_IDLE", 30)) * time.Second,
-			GSTime:       time.Duration(config.Get[int]("GATEWAY_SHUTDOWN", 30)) * time.Second,
+			Addr:         cfg.Gateway.Addr,
+			ReadTimeout:  cfg.Gateway.TimeoutRead,
+			WriteTimeout: cfg.Gateway.TimeoutWrite,
+			IdleTimeout:  cfg.Gateway.TimeoutIdle,
+			GSTime:       cfg.Gateway.ShutdownTimeout,
 		})
 
 	go func() {

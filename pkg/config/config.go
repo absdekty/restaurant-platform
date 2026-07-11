@@ -1,53 +1,109 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
+	"fmt"
 	"os"
-	"path/filepath"
-	"strconv"
+	"strings"
+	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/spf13/viper"
 )
 
-func Load(serviceName ...string) {
-	dir := "./configs"
-
-	files := make([]string, 0, 2+len(serviceName)*2)
-	files = append(files,
-		filepath.Join(dir, ".env"),
-		filepath.Join(dir, ".env.local"))
-	for _, name := range serviceName {
-		if name == "" {
-			continue
-		}
-
-		files = append(files,
-			filepath.Join(dir, ".env."+name),
-			filepath.Join(dir, ".env."+name+".local"))
-	}
-
-	for _, file := range files {
-		godotenv.Overload(file)
-	}
+/* Общий конфиг */
+type AppConfig struct {
+	ENV      string `mapstructure:"env"       validate:"required,oneof=dev prod"`
+	AuthAddr string `mapstructure:"auth_addr" validate:"required,hostname_port"`
+	UserAddr string `mapstructure:"user_addr" validate:"required,hostname_port"`
+	CACert   string `mapstructure:"ca_cert"   validate:"required,filepath"`
 }
 
-func Get[T string | int | bool | float64](key string, zeroValue T) T {
-	value := os.Getenv(key)
-	if value == "" {
-		return zeroValue
+/* Gateway */
+type GatewayConfig struct {
+	AppConfig `mapstructure:",squash"`
+	Gateway   GatewaySettings `mapstructure:"gateway" validate:"required"`
+}
+
+type GatewaySettings struct {
+	Addr            string        `mapstructure:"addr"             validate:"required,hostname_port"`
+	TimeoutRead     time.Duration `mapstructure:"timeout_read"     validate:"required,min=1s"`
+	TimeoutWrite    time.Duration `mapstructure:"timeout_write"    validate:"required,min=1s"`
+	TimeoutIdle     time.Duration `mapstructure:"timeout_idle"     validate:"required,min=1s"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert            string        `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey         string        `mapstructure:"cert_key"         validate:"required,filepath"`
+	RPS             int           `mapstructure:"rps"              validate:"required,min=1"`
+	Burst           int           `mapstructure:"rps_burst"        validate:"required,min=1"`
+}
+
+/* Auth */
+type AuthConfig struct {
+	AppConfig `mapstructure:",squash"`
+	Auth      AuthSettings `mapstructure:"auth" validate:"required"`
+}
+
+type AuthSettings struct {
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert            string        `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey         string        `mapstructure:"cert_key"         validate:"required,filepath"`
+	SecretKey       string        `mapstructure:"secret_key"   validate:"required,min=32"`
+	AccessTTL       time.Duration `mapstructure:"access_ttl"   validate:"required,min=15m"`
+	RefreshTTL      time.Duration `mapstructure:"refresh_ttl"  validate:"required,min=168h"`
+}
+
+/* User */
+type UserConfig struct {
+	AppConfig `mapstructure:",squash"`
+	User      UserSettings `mapstructure:"user" validate:"required"`
+}
+
+type UserSettings struct {
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert            string        `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey         string        `mapstructure:"cert_key"         validate:"required,filepath"`
+}
+
+func Load(path, envPrefix string, cfg any) error {
+	v := viper.New()
+
+	// YAML
+	v.SetConfigFile(path)
+	if err := v.ReadInConfig(); err != nil {
+		return fmt.Errorf("read YAML config: %w", err)
 	}
 
-	var result T
-	switch any(zeroValue).(type) {
-	case string:
-		result = any(value).(T)
-	case int:
-		i, _ := strconv.Atoi(value)
-		result = any(i).(T)
-	case bool:
-		b, _ := strconv.ParseBool(value)
-		result = any(b).(T)
-	case float64:
-		f, _ := strconv.ParseFloat(value, 64)
-		result = any(f).(T)
+	// Local YAML
+	v.SetConfigFile(strings.TrimSuffix(path, ".yaml") + ".local.yaml")
+	localPath := strings.TrimSuffix(path, ".yaml") + ".local.yaml"
+	if _, err := os.Stat(localPath); err == nil {
+		v.SetConfigFile(localPath)
+		if err := v.MergeInConfig(); err != nil {
+			return fmt.Errorf("merge local config: %w", err)
+		}
 	}
-	return result
+
+	// ENV
+	v.SetEnvPrefix(envPrefix)
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	if err := v.Unmarshal(cfg); err != nil {
+		return fmt.Errorf("unmarshal: %w", err)
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(cfg); err != nil {
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			first := validationErrors[0]
+			return fmt.Errorf(
+				"validation: field '%s' failed on '%s' (got '%v')",
+				first.StructField(),
+				first.Tag(),
+				first.Value(),
+			)
+		}
+		return fmt.Errorf("validation: %w", err)
+	}
+
+	return nil
 }

@@ -1,0 +1,30 @@
+# Общие поля
+env: "prod"
+auth_addr: "localhost:50051"
+user_addr: "localhost:50052"
+ca_cert: "certs/ca/ca-cert.pem"
+
+# Сервисы
+gateway:
+  addr: "localhost:8080"
+  timeout_read: 5s
+  timeout_write: 10s
+  timeout_idle: 120s
+  shutdown_timeout: 15s
+  cert: "certs/gateway/client-cert.pem"
+  cert_key: "certs/gateway/client-key.pem"
+  rps: 100
+  rps_burst: 20
+
+auth:
+  shutdown_timeout: 10s
+  cert: "certs/auth/server-cert.pem"
+  cert_key: "certs/auth/server-key.pem"
+  secret_key: "default-secret-key-min-32-chars-long!"
+  access_ttl: 15m
+  refresh_ttl: 168h
+
+user:
+  shutdown_timeout: 10s
+  cert: "certs/user/server-cert.pem"
+  cert_key: "certs/user/server-key.pem"
