@@ -45,12 +45,12 @@ func (l *Logger) Middleware(next http.Handler) http.Handler {
 
 		logger.Info("request started")
 
-		wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+		rw := NewSafeResponseWriter(w)
 
-		next.ServeHTTP(wrapped, r.WithContext(ctx))
+		next.ServeHTTP(rw, r.WithContext(ctx))
 
 		logger.Info("request completed",
-			slog.Int("status", wrapped.status),
+			slog.Int("status", rw.StatusCode),
 			slog.Duration("duration", time.Since(start)),
 		)
 	})
