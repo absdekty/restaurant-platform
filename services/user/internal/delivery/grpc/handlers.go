@@ -3,10 +3,11 @@ package delivery
 import (
 	"context"
 	"errors"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	userv1 "restaurant/api/proto/user/v1"
 	"restaurant/services/user/internal/model"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type UserService interface {
@@ -82,6 +83,7 @@ func (g *GRPCHandler) LoginUser(ctx context.Context, req *userv1.LoginUserReques
 	}
 
 	accessToken, refreshToken, refreshTokenTtl, err := g.authService.GenerateTokens(ctx, userID)
+	// FixMe: проверять ошибку :(
 
 	return &userv1.LoginUserResponse{
 		AccessToken:     accessToken,

@@ -6,12 +6,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"restaurant/pkg/clients"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
 	delivery "restaurant/services/auth/internal/delivery/grpc"
 	"restaurant/services/auth/internal/service"
-	"restaurant/services/auth/internal/storage/sqlite3"
+	"restaurant/services/auth/internal/storage/redis"
 	"syscall"
 )
 
@@ -29,17 +30,23 @@ func main() {
 		slog.String("ENV", cfg.ENV))
 
 	/* Хранилище refresh-token */
-	storage, err := sqlite3.New("data/tokens.db")
+	redisClient, err := clients.NewRedis(&clients.RedisConfig{
+		Addr:     cfg.Auth.RedisClient.Addr,
+		Password: cfg.Auth.RedisClient.Password,
+		DB:       cfg.Auth.RedisClient.DB,
+		PoolSize: cfg.Auth.RedisClient.PoolSize,
+	})
 	if err != nil {
 		slog.Error("failed to create storage",
 			slog.String("error", err.Error()))
 		os.Exit(1)
 	}
+	storage := redis.New(redisClient.Client, "auth")
 	defer func() {
 		if err := storage.Close(); err != nil {
 			slog.Warn("failed to close storage",
 				slog.String("error", err.Error()),
-				slog.String("storage_type", "sqlite3"))
+				slog.String("storage_type", "rediss"))
 		}
 	}()
 
