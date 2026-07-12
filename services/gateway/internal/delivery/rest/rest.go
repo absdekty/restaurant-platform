@@ -10,7 +10,6 @@ import (
 )
 
 type MetricsREST interface {
-	MetricsHandler
 	mw.Middleware
 }
 
@@ -63,9 +62,10 @@ func NewREST(deps Dependencies, cfg RESTServerConfig) *RESTServer {
 }
 
 func (r *RESTServer) Run() error {
-	restHandler := NewHandler(r.deps.Metrics, r.deps.AuthClient, r.deps.UserClient)
+	restHandler := NewHandler(r.deps.AuthClient, r.deps.UserClient)
 	r.server.Handler = NewRouter(restHandler, r.deps.LoggerMW, r.deps.RateLimiter, r.deps.Metrics, r.deps.AuthMW)
 
+	// FixMe: gRPC -> REST
 	slog.Info("gRPC server started",
 		"address", r.server.Addr)
 

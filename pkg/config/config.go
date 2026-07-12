@@ -61,6 +61,14 @@ type RateLimiter struct {
 	IP          RateLimiterRule   `mapstructure:"ip" validate:"required"`
 }
 
+type MetricsServer struct {
+	Addr            string        `mapstructure:"addr"             validate:"required,hostname_port"`
+	TimeoutRead     time.Duration `mapstructure:"timeout_read"     validate:"required,min=1s"`
+	TimeoutWrite    time.Duration `mapstructure:"timeout_write"    validate:"required,min=1s"`
+	TimeoutIdle     time.Duration `mapstructure:"timeout_idle"     validate:"required,min=1s"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+}
+
 type GatewaySettings struct {
 	Addr            string           `mapstructure:"addr"             validate:"required,hostname_port"`
 	TimeoutRead     time.Duration    `mapstructure:"timeout_read"     validate:"required,min=1s"`
@@ -72,6 +80,7 @@ type GatewaySettings struct {
 	RateLimiter     RateLimiter      `mapstructure:"rate_limiter" validate:"required"`
 	GRPCAuthClient  GRPCClientConfig `mapstructure:"gRPCAuthClient"  validate:"required"`
 	GRPCUserClient  GRPCClientConfig `mapstructure:"gRPCUserClient"  validate:"required"`
+	MetricsServer   MetricsServer    `mapstructure:"metrics"  validate:"required"`
 }
 
 /* Auth */

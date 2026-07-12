@@ -11,8 +11,11 @@ import (
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
 	"restaurant/services/gateway/internal/client"
+	"restaurant/services/gateway/internal/delivery/metrics"
+	metrics_mw "restaurant/services/gateway/internal/delivery/metrics/middleware"
 	delivery "restaurant/services/gateway/internal/delivery/rest"
 	"restaurant/services/gateway/internal/delivery/rest/middleware"
+	"sync"
 	"syscall"
 )
 
@@ -110,8 +113,25 @@ func main() {
 	}
 	defer userClient.Close()
 
+	/* Metrics server */
+	metricsServer := metrics.New(metrics.MetricsConfig{
+		Addr:         cfg.Gateway.MetricsServer.Addr,
+		ReadTimeout:  cfg.Gateway.TimeoutRead,
+		WriteTimeout: cfg.Gateway.TimeoutWrite,
+		IdleTimeout:  cfg.Gateway.TimeoutIdle,
+		Shutdown:     cfg.Gateway.MetricsServer.ShutdownTimeout,
+	})
+
+	go func() {
+		if err := metricsServer.Run(); err != nil {
+			slog.Error("failed to run Metrics server",
+				slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+	}()
+
 	/* REST Middlewares */
-	metrics := middleware.NewMetrics()
+	metrics := metrics_mw.NewMetrics()
 	authMW := middleware.NewAuth(authClient)
 	loggerMW := middleware.NewLogger()
 
@@ -155,10 +175,30 @@ func main() {
 
 	slog.Info("got signal-notify")
 
-	if err = restServer.Stop(); err != nil {
-		slog.Warn("failed to gracefully shutdown",
-			slog.String("error", err.Error()))
-		return
-	}
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+
+		if err = restServer.Stop(); err != nil {
+			slog.Warn("failed to gracefully shutdown",
+				slog.String("error", err.Error()))
+			return
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		if err = metricsServer.Stop(); err != nil {
+			slog.Warn("failed to gracefully shutdown",
+				slog.String("error", err.Error()))
+			return
+		}
+	}()
+
+	wg.Wait()
+
 	slog.Info("gracefully shutdown")
 }

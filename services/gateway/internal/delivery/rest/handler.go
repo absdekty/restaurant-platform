@@ -10,13 +10,6 @@ import (
 	"restaurant/services/gateway/internal/model"
 )
 
-type MetricsHandler interface {
-	GetTotalRequests() uint64
-	GetActiveRequests() int64
-	GetErrorsTotal() uint64
-	GetErrorsByStatus() map[string]uint64
-}
-
 type AuthHandler interface {
 	RefreshTokens(ctx context.Context, refreshtoken string) (string, string, int32, error)
 	RevokeRefreshToken(ctx context.Context, refreshtoken string) error
@@ -28,32 +21,20 @@ type UserHandler interface {
 }
 
 type Handler struct {
-	metrics MetricsHandler
-	auth    AuthHandler
-	user    UserHandler
+	auth AuthHandler
+	user UserHandler
 }
 
-func NewHandler(metrics MetricsHandler, auth AuthHandler, user UserHandler) *Handler {
+func NewHandler(auth AuthHandler, user UserHandler) *Handler {
 	return &Handler{
-		metrics: metrics,
-		auth:    auth,
-		user:    user}
+		auth: auth,
+		user: user}
 }
 
 /* Сервис доступен? */
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ok"}`))
-}
-
-/* Метрики */
-func (h *Handler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"total_requests":   h.metrics.GetTotalRequests(),
-		"active_requests":  h.metrics.GetActiveRequests(),
-		"errors_total":     h.metrics.GetErrorsTotal(),
-		"errors_by_status": h.metrics.GetErrorsByStatus()})
 }
 
 /* Регистрация пользователя */
