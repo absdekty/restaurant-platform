@@ -57,6 +57,12 @@ gateway:
     keepalive_time: 10s
     keepalive_timeout: 1s
     keepalive_permit_without_stream: false
+  metrics:
+    addr: ":9090"
+    timeout_read: 5s
+    timeout_write: 10s
+    timeout_idle: 120s
+    shutdown_timeout: 15s
 
 auth:
   shutdown_timeout: 10s

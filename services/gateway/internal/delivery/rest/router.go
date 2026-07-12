@@ -12,7 +12,6 @@ func NewRouter(handler *Handler, logger mw.Middleware, rateLimiter mw.Middleware
 	mw.SetupMiddleware(r, logger, rateLimiter, metrics)
 
 	r.Get("/health", handler.HealthCheck) // GET /health - возвращает StatusOK
-	r.Get("/metrics", handler.GetMetrics) // GET /metrics - получить актуальные метрики
 
 	r.Post("/register", handler.RegisterUser) // POST /register - зарегистрировать пользователя
 	r.Post("/login", handler.LoginUser)       // POST /login - залогинить пользователя
