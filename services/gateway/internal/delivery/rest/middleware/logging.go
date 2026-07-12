@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"restaurant/pkg/models"
+	"restaurant/services/gateway/pkg/httputil"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,7 +46,7 @@ func (l *Logger) Middleware(next http.Handler) http.Handler {
 
 		logger.Info("request started")
 
-		rw := NewSafeResponseWriter(w)
+		rw := httputil.NewSafeResponseWriter(w)
 
 		next.ServeHTTP(rw, r.WithContext(ctx))
 
