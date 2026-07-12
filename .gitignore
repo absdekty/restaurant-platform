@@ -8,3 +8,4 @@ data/*
 *.local
 .vscode
 *.local.yaml
+prometheus.yml
