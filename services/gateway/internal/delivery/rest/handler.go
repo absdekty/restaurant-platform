@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"restaurant/services/gateway/internal/delivery/rest/middleware"
 	"restaurant/services/gateway/internal/model"
 )
 
@@ -26,23 +27,17 @@ type UserHandler interface {
 	LoginUser(ctx context.Context, name, password string) (string, string, int32, error)
 }
 
-type LogGetter interface {
-	GetLogger(ctx context.Context) *slog.Logger
-}
-
 type Handler struct {
 	metrics MetricsHandler
 	auth    AuthHandler
 	user    UserHandler
-	logger  LogGetter
 }
 
-func NewHandler(metrics MetricsHandler, auth AuthHandler, user UserHandler, logger LogGetter) *Handler {
+func NewHandler(metrics MetricsHandler, auth AuthHandler, user UserHandler) *Handler {
 	return &Handler{
 		metrics: metrics,
 		auth:    auth,
-		user:    user,
-		logger:  logger}
+		user:    user}
 }
 
 /* Сервис доступен? */
@@ -63,7 +58,7 @@ func (h *Handler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 
 /* Регистрация пользователя */
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.GetLogger(r.Context())
+	logger := middleware.GetLogger(r.Context())
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -104,7 +99,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 /* Авторизация пользователя */
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.GetLogger(r.Context())
+	logger := middleware.GetLogger(r.Context())
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -149,7 +144,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 /* Рефреш пары токенов */
 func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.GetLogger(r.Context())
+	logger := middleware.GetLogger(r.Context())
 
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
@@ -188,7 +183,7 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 
 /* Логаут пользователя */
 func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.GetLogger(r.Context())
+	logger := middleware.GetLogger(r.Context())
 
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {

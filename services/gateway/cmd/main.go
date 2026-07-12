@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"restaurant/pkg/clients"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
@@ -27,6 +28,26 @@ func main() {
 
 	slog.Info("Server data:",
 		slog.String("ENV", cfg.ENV))
+
+	/* Redis client (Rate limiter) */
+	rlRedisClient, err := clients.NewRedis(&clients.RedisConfig{
+		Addr:     cfg.Gateway.RateLimiter.RedisClient.Addr,
+		Password: cfg.Gateway.RateLimiter.RedisClient.Password,
+		DB:       cfg.Gateway.RateLimiter.RedisClient.DB,
+		PoolSize: cfg.Gateway.RateLimiter.RedisClient.PoolSize,
+	})
+	if err != nil {
+		slog.Error("failed to create redis client",
+			slog.String("error", err.Error()),
+			slog.String("type", "rate limiter"))
+		os.Exit(1)
+	}
+	defer func() {
+		if err := rlRedisClient.Close(); err != nil {
+			slog.Warn("failed to close redis client",
+				slog.String("error", err.Error()))
+		}
+	}()
 
 	/* TLS Clients */
 	clientAuthCreds, err := tls.ClientCreds(
@@ -91,11 +112,16 @@ func main() {
 
 	/* REST Middlewares */
 	metrics := middleware.NewMetrics()
-	rateLimiter := middleware.NewRateLimiter(
-		float64(cfg.Gateway.RPS),
-		cfg.Gateway.Burst)
 	authMW := middleware.NewAuth(authClient)
 	loggerMW := middleware.NewLogger()
+
+	rateLimiter := middleware.NewRateLimiter(middleware.RateLimiterConfig{
+		Client:       rlRedisClient.Client,
+		RoutesAll:    cfg.Gateway.RateLimiter.All.Limits,
+		RoutesIP:     cfg.Gateway.RateLimiter.IP.Limits,
+		RoutesAllExp: cfg.Gateway.RateLimiter.All.Expires,
+		RoutesIPExp:  cfg.Gateway.RateLimiter.IP.Expires,
+	})
 
 	/* REST сервер */
 	restServer := delivery.NewREST(
@@ -105,8 +131,7 @@ func main() {
 			Metrics:     metrics,
 			RateLimiter: rateLimiter,
 			AuthMW:      authMW,
-			LoggerMW:    loggerMW,
-			Logger:      loggerMW},
+			LoggerMW:    loggerMW},
 		delivery.RESTServerConfig{
 			Addr:         cfg.Gateway.Addr,
 			ReadTimeout:  cfg.Gateway.TimeoutRead,

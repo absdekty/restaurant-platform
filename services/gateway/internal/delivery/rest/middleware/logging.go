@@ -56,7 +56,7 @@ func (l *Logger) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-func (l *Logger) GetLogger(ctx context.Context) *slog.Logger {
+func GetLogger(ctx context.Context) *slog.Logger {
 	if logger, ok := ctx.Value(models.LoggerKey).(*slog.Logger); ok {
 		return logger
 	}

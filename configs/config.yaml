@@ -13,8 +13,34 @@ gateway:
   shutdown_timeout: 15s
   cert: "certs/gateway/client-cert.pem"
   cert_key: "certs/gateway/client-key.pem"
-  rps: 100
-  rps_burst: 20
+  rate_limiter:
+    redis_client:
+      addr: "localhost:6379"
+      password: ""
+      db: 0
+      poolsize: 10
+    all:
+      limits:
+        /login: 100
+        /register: 20
+        /refresh: 200
+        /logout: 100
+      expires:
+        /login: 1m
+        /register: 1m
+        /refresh: 1m
+        /logout: 1m
+    ip:
+      limits:
+        /login: 5
+        /register: 3
+        /refresh: 10
+        /logout: 10
+      expires:
+        /login: 1m
+        /register: 5m
+        /refresh: 1m
+        /logout: 1m
   gRPCAuthClient:
     retry_max_attempts: 3
     retry_initial_backoff: 0.1s
@@ -39,23 +65,23 @@ auth:
   secret_key: "default-secret-key-min-32-chars-long!"
   access_ttl: 15m
   refresh_ttl: 168h
-  grpc_max_recv_msg_size: 1048576  # 1 MB = 1024 * 1024
+  grpc_max_recv_msg_size: 1048576 # 1 MB = 1024 * 1024
   grpc_max_send_msg_size: 1048576
   grpc_conn_timeout: 10s
   grpc_max_conn_idle: 5m
   grpc_keepalive_time: 1m
   grpc_keepalive_timeout: 20s
   redis_client:
-   addr: "localhost:6379"
-   password: ""
-   db: 0
-   poolsize: 10
+    addr: "localhost:6379"
+    password: ""
+    db: 0
+    poolsize: 10
 
 user:
   shutdown_timeout: 10s
   cert: "certs/user/server-cert.pem"
   cert_key: "certs/user/server-key.pem"
-  grpc_max_recv_msg_size: 1048576  # 1 MB = 1024 * 1024
+  grpc_max_recv_msg_size: 1048576 # 1 MB = 1024 * 1024
   grpc_max_send_msg_size: 1048576
   grpc_conn_timeout: 10s
   grpc_max_conn_idle: 5m

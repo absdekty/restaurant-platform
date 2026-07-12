@@ -26,10 +26,6 @@ type LoggerMiddlewareREST interface {
 	mw.Middleware
 }
 
-type LoggerHandler interface {
-	GetLogger(ctx context.Context) *slog.Logger
-}
-
 type Dependencies struct {
 	AuthClient  AuthHandler
 	UserClient  UserHandler
@@ -37,7 +33,6 @@ type Dependencies struct {
 	RateLimiter RateLimiterREST
 	AuthMW      AuthMiddlewareREST
 	LoggerMW    LoggerMiddlewareREST
-	Logger      LoggerHandler
 }
 
 type RESTServer struct {
@@ -68,7 +63,7 @@ func NewREST(deps Dependencies, cfg RESTServerConfig) *RESTServer {
 }
 
 func (r *RESTServer) Run() error {
-	restHandler := NewHandler(r.deps.Metrics, r.deps.AuthClient, r.deps.UserClient, r.deps.Logger)
+	restHandler := NewHandler(r.deps.Metrics, r.deps.AuthClient, r.deps.UserClient)
 	r.server.Handler = NewRouter(restHandler, r.deps.LoggerMW, r.deps.RateLimiter, r.deps.Metrics, r.deps.AuthMW)
 
 	slog.Info("gRPC server started",

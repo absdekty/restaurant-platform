@@ -50,6 +50,17 @@ type GatewayConfig struct {
 	Gateway   GatewaySettings `mapstructure:"gateway" validate:"required"`
 }
 
+type RateLimiterRule struct {
+	Limits  map[string]int           `mapstructure:"limits" validate:"required"`
+	Expires map[string]time.Duration `mapstructure:"expires" validate:"required"`
+}
+
+type RateLimiter struct {
+	RedisClient RedisClientConfig `mapstructure:"redis_client" validate:"required"`
+	All         RateLimiterRule   `mapstructure:"all" validate:"required"`
+	IP          RateLimiterRule   `mapstructure:"ip" validate:"required"`
+}
+
 type GatewaySettings struct {
 	Addr            string           `mapstructure:"addr"             validate:"required,hostname_port"`
 	TimeoutRead     time.Duration    `mapstructure:"timeout_read"     validate:"required,min=1s"`
@@ -58,8 +69,7 @@ type GatewaySettings struct {
 	ShutdownTimeout time.Duration    `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
 	Cert            string           `mapstructure:"cert"             validate:"required,filepath"`
 	CertKey         string           `mapstructure:"cert_key"         validate:"required,filepath"`
-	RPS             int              `mapstructure:"rps"              validate:"required,min=1"`
-	Burst           int              `mapstructure:"rps_burst"        validate:"required,min=1"`
+	RateLimiter     RateLimiter      `mapstructure:"rate_limiter" validate:"required"`
 	GRPCAuthClient  GRPCClientConfig `mapstructure:"gRPCAuthClient"  validate:"required"`
 	GRPCUserClient  GRPCClientConfig `mapstructure:"gRPCUserClient"  validate:"required"`
 }
