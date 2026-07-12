@@ -6,16 +6,6 @@ import (
 	"sync/atomic"
 )
 
-type responseRecorder struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (rr *responseRecorder) WriteHeader(code int) {
-	rr.statusCode = code
-	rr.ResponseWriter.WriteHeader(code)
-}
-
 type Metrics struct {
 	totalRequests  uint64
 	activeRequests int64
@@ -34,13 +24,13 @@ func (m *Metrics) Middleware(next http.Handler) http.Handler {
 		atomic.AddInt64(&m.activeRequests, 1)
 		defer atomic.AddInt64(&m.activeRequests, -1)
 
-		rr := &responseRecorder{ResponseWriter: w, statusCode: 200}
+		rw := NewSafeResponseWriter(w)
 
-		next.ServeHTTP(rr, r)
+		next.ServeHTTP(rw, r)
 
-		if rr.statusCode >= 400 {
+		if rw.StatusCode >= 400 {
 			atomic.AddUint64(&m.errorsTotal, 1)
-			m.incErrorsByStatus(rr.statusCode)
+			m.incErrorsByStatus(rw.StatusCode)
 		}
 	})
 }
