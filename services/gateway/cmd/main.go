@@ -11,6 +11,7 @@ import (
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
 	"restaurant/services/gateway/internal/client"
+	metrics_mw "restaurant/services/gateway/internal/delivery/metrics/middleware"
 	delivery "restaurant/services/gateway/internal/delivery/rest"
 	"restaurant/services/gateway/internal/delivery/rest/middleware"
 	"syscall"
@@ -111,7 +112,7 @@ func main() {
 	defer userClient.Close()
 
 	/* REST Middlewares */
-	metrics := middleware.NewMetrics()
+	metrics := metrics_mw.NewMetrics()
 	authMW := middleware.NewAuth(authClient)
 	loggerMW := middleware.NewLogger()
 
