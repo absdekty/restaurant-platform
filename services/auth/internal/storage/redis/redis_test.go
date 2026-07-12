@@ -14,13 +14,39 @@ func createClient(t *testing.T) *Storage {
 	client, err := clients.NewRedis(&clients.RedisConfig{
 		Addr:     "localhost:6379",
 		Password: "",
-		DB:       0,
+		DB:       1,
 		PoolSize: 10,
 	})
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
-	return New(client.Client, "authtest")
+
+	prefix := "authtest"
+
+	ctx := context.Background()
+	var cursor uint64
+	var keys []string
+
+	for {
+		var batch []string
+		var err error
+		batch, cursor, err = client.Scan(ctx, cursor, prefix+":prefix:*", 100).Result()
+		if err != nil {
+			t.Fatalf("failed to scan keys: %v", err)
+		}
+		keys = append(keys, batch...)
+		if cursor == 0 {
+			break
+		}
+	}
+
+	if len(keys) != 0 {
+		if err := client.Del(context.Background(), keys...).Err(); err != nil {
+			t.Fatalf("failed to clear all test keys: %v", err)
+		}
+	}
+
+	return New(client.Client, prefix)
 }
 
 func TestSaveRefreshToken(t *testing.T) {
@@ -53,7 +79,6 @@ func TestSaveRefreshToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := createClient(t)
-			storage.client.FlushAll(context.Background())
 
 			t.Cleanup(func() {
 				if err := storage.Close(); err != nil {
@@ -107,7 +132,6 @@ func TestGetRefreshToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := createClient(t)
-			storage.client.FlushAll(context.Background())
 
 			t.Cleanup(func() {
 				if err := storage.Close(); err != nil {
@@ -161,7 +185,6 @@ func TestRevokeRefreshToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := createClient(t)
-			storage.client.FlushAll(context.Background())
 
 			t.Cleanup(func() {
 				if err := storage.Close(); err != nil {
@@ -229,7 +252,6 @@ func TestRevokeAndSave(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := createClient(t)
-			storage.client.FlushAll(context.Background())
 
 			t.Cleanup(func() {
 				if err := storage.Close(); err != nil {
