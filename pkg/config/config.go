@@ -29,6 +29,21 @@ type GRPCClientConfig struct {
 	KeepalivePermitWithout bool          `mapstructure:"keepalive_permit_without_stream"`
 }
 
+/* Redis Client */
+type RedisClientConfig struct {
+	Addr     string `mapstructure:"addr" validate:"required,hostname_port"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db" validate:"min=0"`
+	PoolSize int    `mapstructure:"poolsize" validate:"required,min=1"`
+}
+
+type Config struct {
+	Addr     string
+	Password string
+	DB       int
+	PoolSize int
+}
+
 /* Gateway */
 type GatewayConfig struct {
 	AppConfig `mapstructure:",squash"`
@@ -56,18 +71,19 @@ type AuthConfig struct {
 }
 
 type AuthSettings struct {
-	ShutdownTimeout      time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert                 string        `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey              string        `mapstructure:"cert_key"         validate:"required,filepath"`
-	SecretKey            string        `mapstructure:"secret_key"   validate:"required,min=32"`
-	AccessTTL            time.Duration `mapstructure:"access_ttl"   validate:"required,min=15m"`
-	RefreshTTL           time.Duration `mapstructure:"refresh_ttl"  validate:"required,min=168h"`
-	GRPCMaxRecvMsgSize   int           `mapstructure:"grpc_max_recv_msg_size" validate:"required,min=1048576"`
-	GRPCMaxSendMsgSize   int           `mapstructure:"grpc_max_send_msg_size" validate:"required,min=1048576"`
-	GRPCConnTimeout      time.Duration `mapstructure:"grpc_conn_timeout"        validate:"required,min=1s"`
-	GRPCMaxConnIdle      time.Duration `mapstructure:"grpc_max_conn_idle"       validate:"required,min=1s"`
-	GRPCKeepaliveTime    time.Duration `mapstructure:"grpc_keepalive_time"      validate:"required,min=1s"`
-	GRPCKeepaliveTimeout time.Duration `mapstructure:"grpc_keepalive_timeout"   validate:"required,min=1s"`
+	ShutdownTimeout      time.Duration     `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert                 string            `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey              string            `mapstructure:"cert_key"         validate:"required,filepath"`
+	SecretKey            string            `mapstructure:"secret_key"   validate:"required,min=32"`
+	AccessTTL            time.Duration     `mapstructure:"access_ttl"   validate:"required,min=15m"`
+	RefreshTTL           time.Duration     `mapstructure:"refresh_ttl"  validate:"required,min=168h"`
+	GRPCMaxRecvMsgSize   int               `mapstructure:"grpc_max_recv_msg_size" validate:"required,min=1048576"`
+	GRPCMaxSendMsgSize   int               `mapstructure:"grpc_max_send_msg_size" validate:"required,min=1048576"`
+	GRPCConnTimeout      time.Duration     `mapstructure:"grpc_conn_timeout"        validate:"required,min=1s"`
+	GRPCMaxConnIdle      time.Duration     `mapstructure:"grpc_max_conn_idle"       validate:"required,min=1s"`
+	GRPCKeepaliveTime    time.Duration     `mapstructure:"grpc_keepalive_time"      validate:"required,min=1s"`
+	GRPCKeepaliveTimeout time.Duration     `mapstructure:"grpc_keepalive_timeout"   validate:"required,min=1s"`
+	RedisClient          RedisClientConfig `mapstructure:"redis_client" validate:"required"`
 }
 
 /* User */

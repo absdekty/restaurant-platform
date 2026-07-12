@@ -45,6 +45,11 @@ auth:
   grpc_max_conn_idle: 5m
   grpc_keepalive_time: 1m
   grpc_keepalive_timeout: 20s
+  redis_client:
+   addr: "localhost:6379"
+   password: ""
+   db: 0
+   poolsize: 10
 
 user:
   shutdown_timeout: 10s

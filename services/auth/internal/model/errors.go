@@ -6,6 +6,7 @@ import "errors"
 var (
 	ErrTokenAlreadyExists = errors.New("Token already exists")
 	ErrTokenNotFound      = errors.New("Token not found")
+	ErrTokenExpired       = errors.New("Token expired")
 )
 
 /* Ошибки сервиса */
