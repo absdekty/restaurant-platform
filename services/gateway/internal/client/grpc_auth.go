@@ -149,7 +149,8 @@ func (a *AuthClient) RefreshTokens(ctx context.Context, token string) (string, s
 		}
 
 		if status.Code(err) == codes.PermissionDenied ||
-			status.Code(err) == codes.Unauthenticated {
+			status.Code(err) == codes.Unauthenticated ||
+			status.Code(err) == codes.Internal {
 			return "", "", 0, model.ErrInvalidToken
 		}
 		return "", "", 0, err

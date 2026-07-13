@@ -132,6 +132,10 @@ func (a *UserClient) LoginUser(ctx context.Context, name, password string) (stri
 		}
 
 		if status.Code(err) == codes.InvalidArgument {
+			return "", model.ErrUserInvalidRegisterDetails
+		}
+
+		if status.Code(err) == codes.Unauthenticated {
 			return "", model.ErrUserInvalidCredentials
 		}
 

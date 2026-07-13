@@ -42,7 +42,7 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.GetLogger(r.Context())
 
-	var req RegisterRequest
+	var req models.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn("client request",
 			slog.String("error", err.Error()),
@@ -83,13 +83,13 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(RegisterResponse{UserID: userID})
+	json.NewEncoder(w).Encode(models.RegisterResponse{UserID: userID})
 }
 
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.GetLogger(r.Context())
 
-	var req LoginRequest
+	var req models.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Warn("client request",
 			slog.String("error", err.Error()),
@@ -147,7 +147,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, refreshToken, refreshTTL)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(LoginResponse{
+	json.NewEncoder(w).Encode(models.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	})
@@ -193,7 +193,7 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, refreshToken, refreshTTL)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(RefreshResponse{
+	json.NewEncoder(w).Encode(models.RefreshResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	})

@@ -1,4 +1,4 @@
-package delivery
+package models
 
 type RegisterRequest struct {
 	Name     string `json:"name"`
