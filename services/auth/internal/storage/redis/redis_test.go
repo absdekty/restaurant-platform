@@ -14,7 +14,7 @@ func createClient(t *testing.T) *Storage {
 	client, err := clients.NewRedis(&clients.RedisConfig{
 		Addr:     "localhost:6379",
 		Password: "",
-		DB:       1,
+		DB:       15,
 		PoolSize: 10,
 	})
 	if err != nil {
@@ -23,28 +23,7 @@ func createClient(t *testing.T) *Storage {
 
 	prefix := "authtest"
 
-	ctx := context.Background()
-	var cursor uint64
-	var keys []string
-
-	for {
-		var batch []string
-		var err error
-		batch, cursor, err = client.Scan(ctx, cursor, prefix+":prefix:*", 100).Result()
-		if err != nil {
-			t.Fatalf("failed to scan keys: %v", err)
-		}
-		keys = append(keys, batch...)
-		if cursor == 0 {
-			break
-		}
-	}
-
-	if len(keys) != 0 {
-		if err := client.Del(context.Background(), keys...).Err(); err != nil {
-			t.Fatalf("failed to clear all test keys: %v", err)
-		}
-	}
+	client.FlushDB(context.Background())
 
 	return New(client.Client, prefix)
 }
