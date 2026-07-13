@@ -1,13 +1,15 @@
 package delivery
 
+// ToDo: логирование всех путей
 import (
 	"context"
 	"errors"
+	authv3 "restaurant/api/proto/auth/v3"
+	"restaurant/services/auth/internal/model"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	authv3 "restaurant/api/proto/auth/v3"
-	"restaurant/services/auth/internal/model"
 )
 
 type HandlerToken interface {

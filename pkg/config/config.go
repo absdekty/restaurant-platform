@@ -37,6 +37,15 @@ type RedisClientConfig struct {
 	PoolSize int    `mapstructure:"poolsize" validate:"required,min=1"`
 }
 
+/* Circuit breaker */
+type CircuitBreakerConfig struct {
+	Name        string        `mapstructure:"name" validate:"required,min=1"`
+	MaxRequests uint32        `mapstructure:"maxrequests" validate:"required,min=1"`
+	Internal    time.Duration `mapstructure:"interval" validate:"min=5s"`
+	Timeout     time.Duration `mapstructure:"timeout" validate:"required,min=10s"`
+	MaxFailures uint32        `mapstructure:"maxfailures" validate:"required,min=1"`
+}
+
 type Config struct {
 	Addr     string
 	Password string
@@ -69,18 +78,24 @@ type MetricsServer struct {
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
 }
 
+type GatewayCircuitBreakers struct {
+	CBAuth CircuitBreakerConfig `mapstructure:"auth" validate:"required"`
+	CBUser CircuitBreakerConfig `mapstructure:"auth" validate:"required"`
+}
+
 type GatewaySettings struct {
-	Addr            string           `mapstructure:"addr"             validate:"required,hostname_port"`
-	TimeoutRead     time.Duration    `mapstructure:"timeout_read"     validate:"required,min=1s"`
-	TimeoutWrite    time.Duration    `mapstructure:"timeout_write"    validate:"required,min=1s"`
-	TimeoutIdle     time.Duration    `mapstructure:"timeout_idle"     validate:"required,min=1s"`
-	ShutdownTimeout time.Duration    `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert            string           `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey         string           `mapstructure:"cert_key"         validate:"required,filepath"`
-	RateLimiter     RateLimiter      `mapstructure:"rate_limiter" validate:"required"`
-	GRPCAuthClient  GRPCClientConfig `mapstructure:"gRPCAuthClient"  validate:"required"`
-	GRPCUserClient  GRPCClientConfig `mapstructure:"gRPCUserClient"  validate:"required"`
-	MetricsServer   MetricsServer    `mapstructure:"metrics"  validate:"required"`
+	Addr            string                 `mapstructure:"addr"             validate:"required,hostname_port"`
+	TimeoutRead     time.Duration          `mapstructure:"timeout_read"     validate:"required,min=1s"`
+	TimeoutWrite    time.Duration          `mapstructure:"timeout_write"    validate:"required,min=1s"`
+	TimeoutIdle     time.Duration          `mapstructure:"timeout_idle"     validate:"required,min=1s"`
+	ShutdownTimeout time.Duration          `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
+	Cert            string                 `mapstructure:"cert"             validate:"required,filepath"`
+	CertKey         string                 `mapstructure:"cert_key"         validate:"required,filepath"`
+	RateLimiter     RateLimiter            `mapstructure:"rate_limiter" validate:"required"`
+	GRPCAuthClient  GRPCClientConfig       `mapstructure:"gRPCAuthClient"  validate:"required"`
+	GRPCUserClient  GRPCClientConfig       `mapstructure:"gRPCUserClient"  validate:"required"`
+	MetricsServer   MetricsServer          `mapstructure:"metrics"  validate:"required"`
+	CircuitBreaker  GatewayCircuitBreakers `mapstructure:"circuit_breakers" validate:"required"`
 }
 
 /* Auth */

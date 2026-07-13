@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"restaurant/pkg/models"
 	"restaurant/services/gateway/internal/delivery/rest/middleware"
 	"restaurant/services/gateway/internal/model"
 )
@@ -52,6 +53,13 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := h.user.RegisterUser(r.Context(), req.Name, req.Password)
 	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		if errors.Is(err, model.ErrUserInvalidRegisterDetails) {
 			logger.Warn("client request",
 				slog.String("error", err.Error()),
@@ -93,6 +101,13 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	accessToken, refreshToken, refreshTTL, err := h.user.LoginUser(r.Context(), req.Name, req.Password)
 	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		if errors.Is(err, model.ErrUserInvalidCredentials) {
 			logger.Warn("client request",
 				slog.String("error", err.Error()),
@@ -132,7 +147,7 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		logger.Warn("client request",
 			slog.String("error", err.Error()),
 			slog.String("type", "cookies are missing"))
-		http.Error(w, "refresh token required", http.StatusUnauthorized)
+		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -140,6 +155,13 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 
 	accessToken, refreshToken, refreshTTL, err := h.auth.RefreshTokens(r.Context(), cookieRefreshToken)
 	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		if errors.Is(err, model.ErrInvalidToken) {
 			logger.Warn("client request",
 				slog.String("error", err.Error()),
@@ -178,6 +200,13 @@ func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	cookieRefreshToken := cookie.Value
 
 	if err := h.auth.RevokeRefreshToken(r.Context(), cookieRefreshToken); err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		logger.Warn("client request",
 			slog.String("error", err.Error()),
 			slog.String("type", "revoke token"))

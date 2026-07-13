@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"restaurant/pkg/circuitbreaker"
 	"restaurant/pkg/clients"
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
@@ -52,6 +53,23 @@ func main() {
 		}
 	}()
 
+	/* Circuit Breakers */
+	cbAuth := circuitbreaker.New(circuitbreaker.Config{
+		Name:        cfg.Gateway.CircuitBreaker.CBAuth.Name,
+		MaxRequests: cfg.Gateway.CircuitBreaker.CBAuth.MaxRequests,
+		Interval:    cfg.Gateway.CircuitBreaker.CBAuth.Internal,
+		Timeout:     cfg.Gateway.CircuitBreaker.CBAuth.Internal,
+		MaxFailures: cfg.Gateway.CircuitBreaker.CBAuth.MaxFailures,
+	})
+
+	cbUser := circuitbreaker.New(circuitbreaker.Config{
+		Name:        cfg.Gateway.CircuitBreaker.CBUser.Name,
+		MaxRequests: cfg.Gateway.CircuitBreaker.CBUser.MaxRequests,
+		Interval:    cfg.Gateway.CircuitBreaker.CBUser.Internal,
+		Timeout:     cfg.Gateway.CircuitBreaker.CBUser.Internal,
+		MaxFailures: cfg.Gateway.CircuitBreaker.CBUser.MaxFailures,
+	})
+
 	/* TLS Clients */
 	clientAuthCreds, err := tls.ClientCreds(
 		cfg.CACert,
@@ -85,7 +103,8 @@ func main() {
 			KeepaliveTime:          cfg.Gateway.GRPCAuthClient.KeepaliveTime,
 			KeepaliveTimeout:       cfg.Gateway.GRPCAuthClient.KeepaliveTimeout,
 			KeepalivePermitWithout: cfg.Gateway.GRPCAuthClient.KeepalivePermitWithout,
-		})
+		},
+		cbAuth)
 	if err != nil {
 		slog.Error("failed to create gRPC client",
 			slog.String("error", err.Error()),
@@ -104,7 +123,8 @@ func main() {
 			KeepaliveTime:          cfg.Gateway.GRPCUserClient.KeepaliveTime,
 			KeepaliveTimeout:       cfg.Gateway.GRPCUserClient.KeepaliveTimeout,
 			KeepalivePermitWithout: cfg.Gateway.GRPCUserClient.KeepalivePermitWithout,
-		})
+		},
+		cbUser)
 	if err != nil {
 		slog.Error("failed to create gRPC client",
 			slog.String("error", err.Error()),
