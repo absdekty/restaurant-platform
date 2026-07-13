@@ -3,7 +3,9 @@ package delivery
 import (
 	"context"
 	"errors"
+	"log/slog"
 	userv2 "restaurant/api/proto/user/v2"
+	"restaurant/pkg/interceptors"
 	"restaurant/services/user/internal/model"
 
 	"google.golang.org/grpc/codes"
@@ -43,6 +45,9 @@ func (g *GRPCHandler) RegisterUser(ctx context.Context, req *userv2.RegisterUser
 			return nil, status.Error(codes.AlreadyExists, model.ErrUserAlreadyExists.Error())
 		}
 
+		interceptors.ExtractLoggerFromContext(ctx).Error(
+			"internal error",
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "any internal error")
 	}
 
@@ -74,6 +79,9 @@ func (g *GRPCHandler) LoginUser(ctx context.Context, req *userv2.LoginUserReques
 			return nil, status.Error(codes.Unauthenticated, model.ErrInvalidCredentials.Error())
 		}
 
+		interceptors.ExtractLoggerFromContext(ctx).Error(
+			"internal error",
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "any internal error")
 	}
 

@@ -42,7 +42,7 @@ func Recoverer() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				logger := extractLoggerFromContext(ctx)
+				logger := ExtractLoggerFromContext(ctx)
 				logger.Warn("panic recovered",
 					slog.Any("panic", r),
 					slog.String("stack", string(debug.Stack())),
@@ -80,7 +80,7 @@ func extractTraceIDFromMetadata(ctx context.Context) string {
 	return ""
 }
 
-func extractLoggerFromContext(ctx context.Context) *slog.Logger {
+func ExtractLoggerFromContext(ctx context.Context) *slog.Logger {
 	if logger, ok := ctx.Value(models.LoggerKey).(*slog.Logger); ok {
 		return logger
 	}
