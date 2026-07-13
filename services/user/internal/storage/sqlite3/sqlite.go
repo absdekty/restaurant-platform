@@ -6,10 +6,11 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
 	"restaurant/pkg/migrator"
 	"restaurant/services/user/internal/model"
 	"strings"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 //go:embed migrations/*.sql

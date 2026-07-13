@@ -3,8 +3,9 @@ package tls
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"google.golang.org/grpc/credentials"
 	"os"
+
+	"google.golang.org/grpc/credentials"
 )
 
 func ServerCreds(caPath, certPath, keyPath string) (credentials.TransportCredentials, error) {

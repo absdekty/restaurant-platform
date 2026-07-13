@@ -63,20 +63,3 @@ func GetLogger(ctx context.Context) *slog.Logger {
 	}
 	return slog.Default()
 }
-
-type responseWriter struct {
-	http.ResponseWriter
-	status       int
-	bytesWritten int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.status = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	n, err := rw.ResponseWriter.Write(b)
-	rw.bytesWritten += n
-	return n, err
-}

@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"restaurant/services/user/internal/model"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type UserStorage interface {
