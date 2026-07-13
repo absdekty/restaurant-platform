@@ -17,11 +17,11 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
 
-	userv1 "restaurant/api/proto/user/v1"
+	userv2 "restaurant/api/proto/user/v2"
 )
 
 type UserClient struct {
-	client userv1.UserServiceClient
+	client userv2.UserServiceClient
 	conn   *grpc.ClientConn
 	cb     CircuitBreaker
 }
@@ -40,7 +40,7 @@ type UserConfig struct {
 func NewUserClient(creds credentials.TransportCredentials, addr string, config UserConfig, cb CircuitBreaker) (*UserClient, error) {
 	serviceConfig := fmt.Sprintf(`{
 		"methodConfig": [{
-			"name": [{"service": "auth.v3.AuthService"}],
+			"name": [{"service": "user.v2.UserService"}],
 			"retryPolicy": {
 				"maxAttempts": %d,
 				"initialBackoff": "%s",
@@ -49,7 +49,7 @@ func NewUserClient(creds credentials.TransportCredentials, addr string, config U
 				"retryableStatusCodes": ["UNAVAILABLE"]
 			}
 		}]
-	}`, // FixMe: service name
+	}`,
 		config.RetryMaxAttempts,
 		config.RetryInitialBackoff,
 		config.RetryMaxBackoff,
@@ -72,7 +72,7 @@ func NewUserClient(creds credentials.TransportCredentials, addr string, config U
 	}
 
 	return &UserClient{
-		client: userv1.NewUserServiceClient(conn),
+		client: userv2.NewUserServiceClient(conn),
 		conn:   conn,
 		cb:     cb,
 	}, nil
@@ -84,7 +84,7 @@ func (a *UserClient) Close() error {
 
 func (a *UserClient) RegisterUser(ctx context.Context, name, password string) (string, error) {
 	result, err := a.cb.Execute(func() (interface{}, error) {
-		return a.client.RegisterUser(ctx, &userv1.RegisterUserRequest{
+		return a.client.RegisterUser(ctx, &userv2.RegisterUserRequest{
 			Name:     name,
 			Password: password,
 		})
@@ -110,13 +110,13 @@ func (a *UserClient) RegisterUser(ctx context.Context, name, password string) (s
 		return "", err
 	}
 
-	resp := result.(*userv1.RegisterUserResponse)
+	resp := result.(*userv2.RegisterUserResponse)
 	return resp.UserId, nil
 }
 
-func (a *UserClient) LoginUser(ctx context.Context, name, password string) (string, string, int32, error) {
+func (a *UserClient) LoginUser(ctx context.Context, name, password string) (string, error) {
 	result, err := a.cb.Execute(func() (interface{}, error) {
-		return a.client.LoginUser(ctx, &userv1.LoginUserRequest{
+		return a.client.LoginUser(ctx, &userv2.LoginUserRequest{
 			Name:     name,
 			Password: password,
 		})
@@ -124,24 +124,24 @@ func (a *UserClient) LoginUser(ctx context.Context, name, password string) (stri
 
 	if err != nil {
 		if errors.Is(err, gobreaker.ErrOpenState) {
-			return "", "", 0, models.ErrServiceUnavailable
+			return "", models.ErrServiceUnavailable
 		}
 
 		if status.Code(err) == codes.Unavailable {
-			return "", "", 0, models.ErrServiceUnavailable
+			return "", models.ErrServiceUnavailable
 		}
 
 		if status.Code(err) == codes.InvalidArgument {
-			return "", "", 0, model.ErrUserInvalidCredentials
+			return "", model.ErrUserInvalidCredentials
 		}
 
 		if status.Code(err) == codes.NotFound {
-			return "", "", 0, model.ErrUserNotFound
+			return "", model.ErrUserNotFound
 		}
 
-		return "", "", 0, err
+		return "", err
 	}
 
-	resp := result.(*userv1.LoginUserResponse)
-	return resp.AccessToken, resp.RefreshToken, resp.RefreshTokenTtl, nil
+	resp := result.(*userv2.LoginUserResponse)
+	return resp.UserId, nil
 }

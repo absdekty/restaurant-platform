@@ -109,6 +109,29 @@ func (a *AuthClient) ValidateToken(ctx context.Context, token string) (string, e
 	return resp.UserId, nil
 }
 
+func (a *AuthClient) GenerateTokens(ctx context.Context, token string) (string, string, int32, error) {
+	result, err := a.cb.Execute(func() (interface{}, error) {
+		return a.client.GenerateTokens(ctx, &authv3.GenerateTokensRequest{
+			UserId: token,
+		})
+	})
+
+	if err != nil {
+		if errors.Is(err, gobreaker.ErrOpenState) {
+			return "", "", 0, models.ErrServiceUnavailable
+		}
+
+		if status.Code(err) == codes.Unavailable {
+			return "", "", 0, models.ErrServiceUnavailable
+		}
+
+		return "", "", 0, err
+	}
+
+	resp := result.(*authv3.GenerateTokensResponse)
+	return resp.AccessToken, resp.RefreshToken, resp.RefreshTokenTtl, nil
+}
+
 func (a *AuthClient) RefreshTokens(ctx context.Context, token string) (string, string, int32, error) {
 	result, err := a.cb.Execute(func() (interface{}, error) {
 		return a.client.RefreshTokens(ctx, &authv3.RefreshTokensRequest{

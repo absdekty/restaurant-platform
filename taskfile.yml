@@ -69,11 +69,7 @@ tasks:
         openssl genrsa -out certs/user/server-key.pem 4096
         openssl req -new -key certs/user/server-key.pem -out certs/user/server.csr -subj "/CN=user"
         openssl x509 -req -days 365 -in certs/user/server.csr -CA certs/ca/ca-cert.pem -CAkey certs/ca/ca-key.pem -out certs/user/server-cert.pem -extfile certs/user/san.ext
-      - |
-        openssl genrsa -out certs/user/client-key.pem 4096
-        openssl req -new -key certs/user/client-key.pem -out certs/user/client.csr -subj "/CN=user-client"
-        openssl x509 -req -days 365 -in certs/user/client.csr -CA certs/ca/ca-cert.pem -CAkey certs/ca/ca-key.pem -out certs/user/client-cert.pem
-      # Gateway: oclient
+      # Gateway: client
       - |
         openssl genrsa -out certs/gateway/client-key.pem 4096
         openssl req -new -key certs/gateway/client-key.pem -out certs/gateway/client.csr -subj "/CN=gateway"
