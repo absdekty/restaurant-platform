@@ -168,8 +168,8 @@ docker compose up --build
 
 ## Конфигурация
 ```bash
-- [`configs/config.yaml`](configs/config.yaml) — полный список конфигураций (для Docker)
-- [`configs/config.local.yaml`](configs/config.local.yaml) — для локальной разработки
+- `configs/config.yaml`— полный список конфигураций
+- `configs/config.local.yaml` — для локальной разработки
 
 Так-же есть механизм перетирания, для локального необязательно вставлять все настройки, достаточно лишь указать путь к нужной конфигурации
 Так-же можно использовать ENV
