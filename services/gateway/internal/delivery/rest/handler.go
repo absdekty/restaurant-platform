@@ -30,16 +30,15 @@ type Handler struct {
 func NewHandler(auth AuthHandler, user UserHandler) *Handler {
 	return &Handler{
 		auth: auth,
-		user: user}
+		user: user,
+	}
 }
 
-/* Сервис доступен? */
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
-/* Регистрация пользователя */
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.GetLogger(r.Context())
 
@@ -87,7 +86,6 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(RegisterResponse{UserID: userID})
 }
 
-/* Авторизация пользователя */
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.GetLogger(r.Context())
 
@@ -112,7 +110,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, model.ErrUserInvalidCredentials) {
 			logger.Warn("client request",
 				slog.String("error", err.Error()),
-				slog.String("type", "bad credintials"))
+				slog.String("type", "bad credentials"))
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
@@ -121,7 +119,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 			logger.Warn("client request",
 				slog.String("error", err.Error()),
 				slog.String("type", "user not found"))
-			http.Error(w, "user already exists", http.StatusNotFound) // FixMe: bad answer
+			http.Error(w, "user not found", http.StatusNotFound)
 			return
 		}
 
@@ -151,10 +149,10 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(LoginResponse{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken})
+		RefreshToken: refreshToken,
+	})
 }
 
-/* Рефреш пары токенов */
 func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.GetLogger(r.Context())
 
@@ -163,7 +161,7 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		logger.Warn("client request",
 			slog.String("error", err.Error()),
 			slog.String("type", "cookies are missing"))
-		http.Error(w, "service unavailable", http.StatusServiceUnavailable) // FixMe: bad answer
+		http.Error(w, "refresh token required", http.StatusUnauthorized)
 		return
 	}
 
@@ -197,10 +195,10 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(RefreshResponse{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken})
+		RefreshToken: refreshToken,
+	})
 }
 
-/* Логаут пользователя */
 func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	logger := middleware.GetLogger(r.Context())
 
@@ -233,7 +231,6 @@ func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-/* Установить куки */
 func setCookie(w http.ResponseWriter, refreshToken string, refreshTTL int32) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
@@ -246,7 +243,6 @@ func setCookie(w http.ResponseWriter, refreshToken string, refreshTTL int32) {
 	})
 }
 
-/* Очистить куки */
 func clearCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:   "refresh_token",
