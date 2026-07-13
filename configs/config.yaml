@@ -1,12 +1,12 @@
 # Общие поля
 env: "prod"
-auth_addr: "localhost:50051"
-user_addr: "localhost:50052"
+auth_addr: "auth:50051"
+user_addr: "user:50052"
 ca_cert: "certs/ca/ca-cert.pem"
 
 # Сервисы
 gateway:
-  addr: "localhost:8080"
+  addr: ":8080"
   timeout_read: 5s
   timeout_write: 10s
   timeout_idle: 120s
@@ -16,7 +16,7 @@ gateway:
     cert_key: "certs/gateway/client-key.pem"
   rate_limiter:
     redis_client:
-      addr: "localhost:6379"
+      addr: "redis:6379"
       password: ""
       db: 0
       poolsize: 10
@@ -93,7 +93,7 @@ auth:
   grpc_keepalive_time: 1m
   grpc_keepalive_timeout: 20s
   redis_client:
-    addr: "localhost:6379"
+    addr: "redis:6379"
     password: ""
     db: 0
     poolsize: 10
@@ -121,7 +121,7 @@ user:
     keepalive_timeout: 1s
     keepalive_permit_without_stream: true
   postgres:
-    addr: "localhost:5432"
+    addr: "postgres:5432"
     user: "restaurant"
     password: "restaurant"
     db: "users_db"
