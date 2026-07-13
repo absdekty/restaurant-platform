@@ -121,7 +121,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 			logger.Warn("client request",
 				slog.String("error", err.Error()),
 				slog.String("type", "user not found"))
-			http.Error(w, "user already exists", http.StatusNotFound)
+			http.Error(w, "user already exists", http.StatusNotFound) // FixMe: bad answer
 			return
 		}
 
@@ -163,7 +163,7 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		logger.Warn("client request",
 			slog.String("error", err.Error()),
 			slog.String("type", "cookies are missing"))
-		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+		http.Error(w, "service unavailable", http.StatusServiceUnavailable) // FixMe: bad answer
 		return
 	}
 
