@@ -36,7 +36,7 @@ func NewHandler(auth AuthHandler, user UserHandler) *Handler {
 
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`))
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +83,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(models.RegisterResponse{UserID: userID})
+	_ = json.NewEncoder(w).Encode(models.RegisterResponse{UserID: userID})
 }
 
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +147,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, refreshToken, refreshTTL)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(models.LoginResponse{
+	_ = json.NewEncoder(w).Encode(models.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	})
@@ -193,7 +193,7 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, refreshToken, refreshTTL)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(models.RefreshResponse{
+	_ = json.NewEncoder(w).Encode(models.RefreshResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	})

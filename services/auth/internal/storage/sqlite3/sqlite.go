@@ -6,10 +6,11 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
 	"restaurant/pkg/migrator"
 	"restaurant/services/auth/internal/model"
 	"strings"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 /* Интерфейс для транкзаций */
@@ -84,7 +85,7 @@ func (s *Storage) RevokeAndSave(ctx context.Context, oldToken string, newToken *
 	if err != nil {
 		return fmt.Errorf("failed to start tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	err = s.revokeRefreshToken(ctx, tx, oldToken)
 	if err != nil {
