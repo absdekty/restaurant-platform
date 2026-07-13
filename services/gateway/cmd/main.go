@@ -57,16 +57,16 @@ func main() {
 	cbAuth := circuitbreaker.New(circuitbreaker.Config{
 		Name:        cfg.Gateway.CircuitBreaker.CBAuth.Name,
 		MaxRequests: cfg.Gateway.CircuitBreaker.CBAuth.MaxRequests,
-		Interval:    cfg.Gateway.CircuitBreaker.CBAuth.Internal,
-		Timeout:     cfg.Gateway.CircuitBreaker.CBAuth.Internal,
+		Interval:    cfg.Gateway.CircuitBreaker.CBAuth.Interval,
+		Timeout:     cfg.Gateway.CircuitBreaker.CBAuth.Timeout,
 		MaxFailures: cfg.Gateway.CircuitBreaker.CBAuth.MaxFailures,
 	})
 
 	cbUser := circuitbreaker.New(circuitbreaker.Config{
 		Name:        cfg.Gateway.CircuitBreaker.CBUser.Name,
 		MaxRequests: cfg.Gateway.CircuitBreaker.CBUser.MaxRequests,
-		Interval:    cfg.Gateway.CircuitBreaker.CBUser.Internal,
-		Timeout:     cfg.Gateway.CircuitBreaker.CBUser.Internal,
+		Interval:    cfg.Gateway.CircuitBreaker.CBUser.Interval,
+		Timeout:     cfg.Gateway.CircuitBreaker.CBUser.Timeout,
 		MaxFailures: cfg.Gateway.CircuitBreaker.CBUser.MaxFailures,
 	})
 

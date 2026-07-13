@@ -41,7 +41,7 @@ type RedisClientConfig struct {
 type CircuitBreakerConfig struct {
 	Name        string        `mapstructure:"name" validate:"required,min=1"`
 	MaxRequests uint32        `mapstructure:"maxrequests" validate:"required,min=1"`
-	Internal    time.Duration `mapstructure:"interval" validate:"min=5s"`
+	Interval    time.Duration `mapstructure:"interval" validate:"min=5s"`
 	Timeout     time.Duration `mapstructure:"timeout" validate:"required,min=10s"`
 	MaxFailures uint32        `mapstructure:"maxfailures" validate:"required,min=1"`
 }
