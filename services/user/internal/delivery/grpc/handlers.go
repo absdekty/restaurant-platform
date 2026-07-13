@@ -3,10 +3,13 @@ package delivery
 import (
 	"context"
 	"errors"
+	"log/slog"
+	userv2 "restaurant/api/proto/user/v2"
+	"restaurant/pkg/interceptors"
+	"restaurant/services/user/internal/model"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	userv1 "restaurant/api/proto/user/v1"
-	"restaurant/services/user/internal/model"
 )
 
 type UserService interface {
@@ -14,21 +17,16 @@ type UserService interface {
 	LoginUser(ctx context.Context, name, password string) (string, error)
 }
 
-type AuthService interface {
-	GenerateTokens(ctx context.Context, userID string) (string, string, int32, error)
-}
-
 type GRPCHandler struct {
-	userv1.UnimplementedUserServiceServer
+	userv2.UnimplementedUserServiceServer
 	userService UserService
-	authService AuthService
 }
 
-func NewHandler(userService UserService, authService AuthService) *GRPCHandler {
-	return &GRPCHandler{userService: userService, authService: authService}
+func NewHandler(userService UserService) *GRPCHandler {
+	return &GRPCHandler{userService: userService}
 }
 
-func (g *GRPCHandler) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.RegisterUserResponse, error) {
+func (g *GRPCHandler) RegisterUser(ctx context.Context, req *userv2.RegisterUserRequest) (*userv2.RegisterUserResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
@@ -47,15 +45,18 @@ func (g *GRPCHandler) RegisterUser(ctx context.Context, req *userv1.RegisterUser
 			return nil, status.Error(codes.AlreadyExists, model.ErrUserAlreadyExists.Error())
 		}
 
+		interceptors.ExtractLoggerFromContext(ctx).Error(
+			"internal error",
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "any internal error")
 	}
 
-	return &userv1.RegisterUserResponse{
+	return &userv2.RegisterUserResponse{
 		UserId: user.ID,
 	}, nil
 }
 
-func (g *GRPCHandler) LoginUser(ctx context.Context, req *userv1.LoginUserRequest) (*userv1.LoginUserResponse, error) {
+func (g *GRPCHandler) LoginUser(ctx context.Context, req *userv2.LoginUserRequest) (*userv2.LoginUserResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
@@ -78,14 +79,13 @@ func (g *GRPCHandler) LoginUser(ctx context.Context, req *userv1.LoginUserReques
 			return nil, status.Error(codes.Unauthenticated, model.ErrInvalidCredentials.Error())
 		}
 
+		interceptors.ExtractLoggerFromContext(ctx).Error(
+			"internal error",
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "any internal error")
 	}
 
-	accessToken, refreshToken, refreshTokenTtl, err := g.authService.GenerateTokens(ctx, userID)
-
-	return &userv1.LoginUserResponse{
-		AccessToken:     accessToken,
-		RefreshToken:    refreshToken,
-		RefreshTokenTtl: refreshTokenTtl,
+	return &userv2.LoginUserResponse{
+		UserId: userID,
 	}, nil
 }

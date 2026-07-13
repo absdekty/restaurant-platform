@@ -1,125 +1,166 @@
 package delivery
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
-	"restaurant/pkg/logger"
+	"restaurant/pkg/models"
+	"restaurant/services/gateway/internal/delivery/rest/middleware"
 	"restaurant/services/gateway/internal/model"
 )
 
+type AuthHandler interface {
+	RefreshTokens(ctx context.Context, refreshtoken string) (string, string, int32, error)
+	RevokeRefreshToken(ctx context.Context, refreshtoken string) error
+	GenerateTokens(ctx context.Context, userID string) (string, string, int32, error)
+}
+
+type UserHandler interface {
+	RegisterUser(ctx context.Context, name, password string) (string, error)
+	LoginUser(ctx context.Context, name, password string) (string, error)
+}
+
 type Handler struct {
-	rateLimiter *RateLimiter
-	metrics     *Metrics
-	auth        *Auth
-	user        UserService
+	auth AuthHandler
+	user UserHandler
 }
 
-func NewHandler(rateLimiter *RateLimiter, metrics *Metrics, auth *Auth, user UserService) *Handler {
+func NewHandler(auth AuthHandler, user UserHandler) *Handler {
 	return &Handler{
-		rateLimiter: rateLimiter,
-		metrics:     metrics,
-		auth:        auth,
-		user:        user}
+		auth: auth,
+		user: user,
+	}
 }
 
-/* Сервис доступен? */
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`))
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
-/* Метрики */
-func (h *Handler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"total_requests":   h.metrics.GetTotalRequests(),
-		"active_requests":  h.metrics.GetActiveRequests(),
-		"errors_total":     h.metrics.GetErrorsTotal(),
-		"errors_by_status": h.metrics.GetErrorsByStatus()})
-}
-
-/* Регистрация пользователя */
 func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
+	logger := middleware.GetLogger(r.Context())
+
+	var req models.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logger.Info.Printf("decoder: %v", err)
+		logger.Warn("client request",
+			slog.String("error", err.Error()),
+			slog.String("type", "decoder"))
 		http.Error(w, "invalid JSON format", http.StatusBadRequest)
 		return
 	}
 
 	userID, err := h.user.RegisterUser(r.Context(), req.Name, req.Password)
 	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		if errors.Is(err, model.ErrUserInvalidRegisterDetails) {
-			logger.Info.Printf("register[reg details]: %v", err)
+			logger.Warn("client request",
+				slog.String("error", err.Error()),
+				slog.String("type", "bad register details"))
 			http.Error(w, "invalid register details", http.StatusBadRequest)
 			return
 		}
 
 		if errors.Is(err, model.ErrUserAlreadyExists) {
-			logger.Info.Printf("register[exist]: %v", err)
+			logger.Warn("client request",
+				slog.String("error", err.Error()),
+				slog.String("type", "user already exist"))
 			http.Error(w, "user already exists", http.StatusConflict)
 			return
 		}
 
-		logger.Error.Printf("register[internal]: %v", err)
+		logger.Error("internal server error",
+			slog.String("error", err.Error()))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(RegisterResponse{UserID: userID})
+	_ = json.NewEncoder(w).Encode(models.RegisterResponse{UserID: userID})
 }
 
-/* Авторизация пользователя */
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
+	logger := middleware.GetLogger(r.Context())
+
+	var req models.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logger.Info.Printf("decoder: %v", err)
+		logger.Warn("client request",
+			slog.String("error", err.Error()),
+			slog.String("type", "decoder"))
 		http.Error(w, "invalid JSON format", http.StatusBadRequest)
 		return
 	}
 
-	accessToken, refreshToken, refreshTTL, err := h.user.LoginUser(r.Context(), req.Name, req.Password)
+	userID, err := h.user.LoginUser(r.Context(), req.Name, req.Password)
 	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		if errors.Is(err, model.ErrUserInvalidCredentials) {
-			logger.Info.Printf("login[credentials]: %v", err)
-			http.Error(w, "invalid credentials", http.StatusBadRequest)
+			logger.Warn("client request",
+				slog.String("error", err.Error()),
+				slog.String("type", "bad credentials"))
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
 
 		if errors.Is(err, model.ErrUserNotFound) {
-			logger.Info.Printf("login[not exists]: %v", err)
-			http.Error(w, "user already exists", http.StatusNotFound)
+			logger.Warn("client request",
+				slog.String("error", err.Error()),
+				slog.String("type", "user not found"))
+			http.Error(w, "user not found", http.StatusNotFound)
 			return
 		}
 
-		logger.Error.Printf("login[internal]: %v", err)
+		logger.Error("internal server error",
+			slog.String("error", err.Error()))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		Path:     "/",
-		MaxAge:   int(refreshTTL),
-	})
+	accessToken, refreshToken, refreshTTL, err := h.auth.GenerateTokens(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		logger.Error("internal server error",
+			slog.String("error", err.Error()))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	setCookie(w, refreshToken, refreshTTL)
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(LoginResponse{
+	_ = json.NewEncoder(w).Encode(models.LoginResponse{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken})
+		RefreshToken: refreshToken,
+	})
 }
 
-/* Рефреш пары токенов */
 func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.GetLogger(r.Context())
+
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
-		logger.Info.Printf("cookie: %v", err)
+		logger.Warn("client request",
+			slog.String("error", err.Error()),
+			slog.String("type", "cookies are missing"))
 		http.Error(w, "refresh token required", http.StatusUnauthorized)
 		return
 	}
@@ -128,17 +169,69 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 
 	accessToken, refreshToken, refreshTTL, err := h.auth.RefreshTokens(r.Context(), cookieRefreshToken)
 	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		if errors.Is(err, model.ErrInvalidToken) {
-			logger.Info.Printf("refresh[invalid token]: %v", err)
+			logger.Warn("client request",
+				slog.String("error", err.Error()),
+				slog.String("type", "invalid token"))
 			http.Error(w, "token revoked or expired or not found", http.StatusForbidden)
 			return
 		}
 
-		logger.Error.Printf("refresh[internal]: %v", err)
+		logger.Error("internal server error",
+			slog.String("error", err.Error()))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
+	setCookie(w, refreshToken, refreshTTL)
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(models.RefreshResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
+
+func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	logger := middleware.GetLogger(r.Context())
+
+	cookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		logger.Warn("client request",
+			slog.String("error", err.Error()),
+			slog.String("type", "cookies are missing"))
+		http.Error(w, "refresh token required", http.StatusUnauthorized)
+		return
+	}
+
+	cookieRefreshToken := cookie.Value
+
+	if err := h.auth.RevokeRefreshToken(r.Context(), cookieRefreshToken); err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		logger.Warn("client request",
+			slog.String("error", err.Error()),
+			slog.String("type", "revoke token"))
+	}
+
+	clearCookie(w)
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func setCookie(w http.ResponseWriter, refreshToken string, refreshTTL int32) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    refreshToken,
@@ -148,32 +241,11 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   int(refreshTTL),
 	})
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(RefreshResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken})
 }
 
-/* Логаут пользователя */
-func (h *Handler) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("refresh_token")
-	if err != nil {
-		logger.Info.Printf("cookie: %v", err)
-		http.Error(w, "refresh token required", http.StatusUnauthorized)
-		return
-	}
-
-	cookieRefreshToken := cookie.Value
-
-	if err := h.auth.RevokeRefreshToken(r.Context(), cookieRefreshToken); err != nil {
-		logger.Error.Printf("revoke: %v", err)
-	}
-
+func clearCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:   "refresh_token",
 		MaxAge: -1,
 	})
-
-	w.WriteHeader(http.StatusOK)
 }

@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"restaurant/services/user/internal/model"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type UserStorage interface {
@@ -42,7 +43,7 @@ func (u *UserService) CreateUser(ctx context.Context, name, password string) (*m
 	}
 
 	user := &model.User{
-		ID:        uuid.New().String(),
+		ID:        uuid.Must(uuid.NewV7()).String(),
 		Name:      name,
 		Password:  hashedPassword,
 		CreatedAt: time.Now(),

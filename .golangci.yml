@@ -1,0 +1,42 @@
+run:
+  timeout: 3m
+  tests: false
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - gocyclo
+    - misspell
+    - unconvert
+    - bodyclose
+    - nilerr
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+
+issues:
+  exclude-dirs:
+    - api/proto
+    - bin
+    - certs
+    - data
+    - docker
+  exclude-files:
+    - ".*\\.pb\\.go"
+    - ".*_grpc\\.pb\\.go"
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - all

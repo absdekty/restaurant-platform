@@ -2,34 +2,48 @@ package delivery
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"time"
 
+	userv2 "restaurant/api/proto/user/v2"
+	"restaurant/pkg/interceptors"
+
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	userv1 "restaurant/api/proto/user/v1"
-	"restaurant/pkg/logger"
 )
 
 type gRPCServer struct {
 	addr        string
+	creds       credentials.TransportCredentials
 	userService UserService
-	authService AuthService
 	gsTime      time.Duration
 	server      *grpc.Server
+	config      OptionConfig
 }
 
-func NewGRPCServer(userService UserService, authService AuthService, addr string, gsTime time.Duration) *gRPCServer {
+type OptionConfig struct {
+	MaxReceivedSize   int
+	MaxSendSize       int
+	ConnectionTimeout time.Duration
+	MaxConnectionIdle time.Duration
+	KeepAliveTime     time.Duration
+	KeepAliveTimeout  time.Duration
+}
+
+func NewGRPCServer(creds credentials.TransportCredentials, userService UserService, addr string, gsTime time.Duration, config OptionConfig) *gRPCServer {
 	return &gRPCServer{
 		addr:        addr,
+		creds:       creds,
 		userService: userService,
-		authService: authService,
 		gsTime:      gsTime,
+		config:      config,
 	}
 }
 
 func (s *gRPCServer) Run() error {
-	handler := NewHandler(s.userService, s.authService)
+	handler := NewHandler(s.userService)
 
 	lis, err := net.Listen("tcp", s.addr)
 	if err != nil {
@@ -37,21 +51,26 @@ func (s *gRPCServer) Run() error {
 	}
 
 	opts := []grpc.ServerOption{
-		grpc.MaxRecvMsgSize(1024 * 1024),
-		grpc.MaxSendMsgSize(1024 * 1024),
-		grpc.ConnectionTimeout(10 * time.Second),
+		grpc.Creds(s.creds),
+		grpc.MaxRecvMsgSize(s.config.MaxReceivedSize),
+		grpc.MaxSendMsgSize(s.config.MaxSendSize),
+		grpc.ConnectionTimeout(s.config.ConnectionTimeout),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle: 5 * time.Minute,
-			Time:              1 * time.Minute,
-			Timeout:           20 * time.Second,
+			MaxConnectionIdle: s.config.MaxConnectionIdle,
+			Time:              s.config.KeepAliveTime,
+			Timeout:           s.config.KeepAliveTimeout,
 		}),
-		grpc.ChainUnaryInterceptor(loggingInterceptor, recoveryInterceptor),
+		grpc.ChainUnaryInterceptor(
+			interceptors.Logger(),
+			interceptors.Recoverer(),
+		),
 	}
 
 	s.server = grpc.NewServer(opts...)
-	userv1.RegisterUserServiceServer(s.server, handler)
+	userv2.RegisterUserServiceServer(s.server, handler)
 
-	logger.Info.Printf("сервер слушает на: %s", s.addr)
+	slog.Info("gRPC server started",
+		"address", s.addr)
 	if err := s.server.Serve(lis); err != nil {
 		return fmt.Errorf("ошибка gRPC сервера: %v", err)
 	}
