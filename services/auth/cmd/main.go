@@ -59,7 +59,7 @@ func main() {
 	/* TLS Server */
 	creds, err := tls.ServerCreds(
 		cfg.CACert,
-		cfg.Auth.Cert, cfg.Auth.CertKey)
+		cfg.Auth.CertsServer.Cert, cfg.Auth.CertsServer.CertKey)
 	if err != nil {
 		slog.Error("failed to create mTLS",
 			slog.String("error", err.Error()),

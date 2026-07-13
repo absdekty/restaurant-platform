@@ -41,9 +41,15 @@ type RedisClientConfig struct {
 type CircuitBreakerConfig struct {
 	Name        string        `mapstructure:"name" validate:"required,min=1"`
 	MaxRequests uint32        `mapstructure:"maxrequests" validate:"required,min=1"`
-	Internal    time.Duration `mapstructure:"interval" validate:"min=5s"`
+	Interval    time.Duration `mapstructure:"interval" validate:"min=5s"`
 	Timeout     time.Duration `mapstructure:"timeout" validate:"required,min=10s"`
 	MaxFailures uint32        `mapstructure:"maxfailures" validate:"required,min=1"`
+}
+
+/* Certs mTLS */
+type CertsConfig struct {
+	Cert    string `mapstructure:"cert" validate:"required,filepath"`
+	CertKey string `mapstructure:"cert_key" validate:"required,filepath"`
 }
 
 type Config struct {
@@ -89,8 +95,7 @@ type GatewaySettings struct {
 	TimeoutWrite    time.Duration          `mapstructure:"timeout_write"    validate:"required,min=1s"`
 	TimeoutIdle     time.Duration          `mapstructure:"timeout_idle"     validate:"required,min=1s"`
 	ShutdownTimeout time.Duration          `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert            string                 `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey         string                 `mapstructure:"cert_key"         validate:"required,filepath"`
+	CertsClient     CertsConfig            `mapstructure:"certs_client" validate:"required"`
 	RateLimiter     RateLimiter            `mapstructure:"rate_limiter" validate:"required"`
 	GRPCAuthClient  GRPCClientConfig       `mapstructure:"gRPCAuthClient"  validate:"required"`
 	GRPCUserClient  GRPCClientConfig       `mapstructure:"gRPCUserClient"  validate:"required"`
@@ -106,8 +111,7 @@ type AuthConfig struct {
 
 type AuthSettings struct {
 	ShutdownTimeout      time.Duration     `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert                 string            `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey              string            `mapstructure:"cert_key"         validate:"required,filepath"`
+	CertsServer          CertsConfig       `mapstructure:"certs_server" validate:"required"`
 	SecretKey            string            `mapstructure:"secret_key"   validate:"required,min=32"`
 	AccessTTL            time.Duration     `mapstructure:"access_ttl"   validate:"required,min=15m"`
 	RefreshTTL           time.Duration     `mapstructure:"refresh_ttl"  validate:"required,min=168h"`
@@ -128,8 +132,8 @@ type UserConfig struct {
 
 type UserSettings struct {
 	ShutdownTimeout      time.Duration    `mapstructure:"shutdown_timeout" validate:"required,min=1s"`
-	Cert                 string           `mapstructure:"cert"             validate:"required,filepath"`
-	CertKey              string           `mapstructure:"cert_key"         validate:"required,filepath"`
+	CertsServer          CertsConfig      `mapstructure:"certs_server" validate:"required"`
+	CertsClient          CertsConfig      `mapstructure:"certs_client" validate:"required"`
 	GRPCMaxRecvMsgSize   int              `mapstructure:"grpc_max_recv_msg_size" validate:"required,min=1048576"`
 	GRPCMaxSendMsgSize   int              `mapstructure:"grpc_max_send_msg_size" validate:"required,min=1048576"`
 	GRPCConnTimeout      time.Duration    `mapstructure:"grpc_conn_timeout"        validate:"required,min=1s"`

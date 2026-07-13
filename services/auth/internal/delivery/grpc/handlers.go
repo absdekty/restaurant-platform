@@ -4,7 +4,9 @@ package delivery
 import (
 	"context"
 	"errors"
+	"log/slog"
 	authv3 "restaurant/api/proto/auth/v3"
+	"restaurant/pkg/interceptors"
 	"restaurant/services/auth/internal/model"
 
 	"google.golang.org/grpc/codes"
@@ -58,6 +60,9 @@ func (g *GRPCHandler) GenerateTokens(ctx context.Context, req *authv3.GenerateTo
 
 	accessToken, refreshToken, refreshTTL, err := g.tokenService.GenerateTokens(ctx, req.GetUserId())
 	if err != nil {
+		interceptors.ExtractLoggerFromContext(ctx).Error(
+			"internal error",
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "any internal error")
 	}
 
@@ -83,6 +88,9 @@ func (g *GRPCHandler) RefreshTokens(ctx context.Context, req *authv3.RefreshToke
 			return nil, status.Error(codes.Unauthenticated, "token not found")
 		}
 
+		interceptors.ExtractLoggerFromContext(ctx).Error(
+			"internal error",
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "any internal error")
 	}
 
@@ -103,6 +111,9 @@ func (g *GRPCHandler) RevokeRefreshToken(ctx context.Context, req *authv3.Revoke
 			return nil, status.Error(codes.Unauthenticated, "token not found")
 		}
 
+		interceptors.ExtractLoggerFromContext(ctx).Error(
+			"internal error",
+			slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "any internal error")
 	}
 

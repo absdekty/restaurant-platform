@@ -9,7 +9,6 @@ import (
 	"restaurant/pkg/config"
 	"restaurant/pkg/logger"
 	"restaurant/pkg/tls"
-	"restaurant/services/user/internal/client"
 	delivery "restaurant/services/user/internal/delivery/grpc"
 	"restaurant/services/user/internal/service"
 	"restaurant/services/user/internal/storage/sqlite3"
@@ -45,46 +44,16 @@ func main() {
 		}
 	}()
 
-	/* TLS Client */
-	clientCreds, err := tls.ClientCreds(
-		cfg.CACert,
-		cfg.User.Cert, cfg.User.CertKey,
-		"auth")
-	if err != nil {
-		slog.Error("failed to create mTLS",
-			slog.String("error", err.Error()),
-			slog.String("type", "auth_client"))
-		os.Exit(1)
-	}
-
 	/* TLS Server */
 	serverCreds, err := tls.ServerCreds(
 		cfg.CACert,
-		cfg.User.Cert, cfg.User.CertKey)
+		cfg.User.CertsServer.Cert, cfg.User.CertsServer.CertKey)
 	if err != nil {
 		slog.Error("failed to create mTLS",
 			slog.String("error", err.Error()),
 			slog.String("type", "user_server"))
 		os.Exit(1)
 	}
-
-	/* gRPC-auth client */
-	authClient, err := client.NewAuthClient(clientCreds, cfg.AuthAddr,
-		client.AuthConfig{
-			RetryMaxAttempts:       cfg.User.GRPCAuthClient.RetryMaxAttempts,
-			RetryInitialBackoff:    cfg.User.GRPCAuthClient.RetryInitialBackoff,
-			RetryMaxBackoff:        cfg.User.GRPCAuthClient.RetryMaxBackoff,
-			RetryBackoffMultiplier: cfg.User.GRPCAuthClient.RetryBackoffMultiplier,
-			KeepaliveTime:          cfg.User.GRPCAuthClient.KeepaliveTime,
-			KeepaliveTimeout:       cfg.User.GRPCAuthClient.KeepaliveTimeout,
-			KeepalivePermitWithout: cfg.User.GRPCAuthClient.KeepalivePermitWithout,
-		})
-	if err != nil {
-		slog.Error("failed to run gRPC client",
-			slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-	defer authClient.Close()
 
 	/* Hasher */
 	hasher := hasher.New()
@@ -93,7 +62,7 @@ func main() {
 	userService := service.NewUserService(storage, hasher)
 
 	/* gRPC Server */
-	srv := delivery.NewGRPCServer(serverCreds, userService, authClient,
+	srv := delivery.NewGRPCServer(serverCreds, userService,
 		cfg.UserAddr, cfg.User.ShutdownTimeout,
 		delivery.OptionConfig{
 			MaxReceivedSize:   cfg.User.GRPCMaxRecvMsgSize,

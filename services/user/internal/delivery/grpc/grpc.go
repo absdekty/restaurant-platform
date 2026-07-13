@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	userv1 "restaurant/api/proto/user/v1"
+	userv2 "restaurant/api/proto/user/v2"
 	"restaurant/pkg/interceptors"
 
 	"google.golang.org/grpc"
@@ -18,7 +18,6 @@ type gRPCServer struct {
 	addr        string
 	creds       credentials.TransportCredentials
 	userService UserService
-	authService AuthService
 	gsTime      time.Duration
 	server      *grpc.Server
 	config      OptionConfig
@@ -33,19 +32,18 @@ type OptionConfig struct {
 	KeepAliveTimeout  time.Duration
 }
 
-func NewGRPCServer(creds credentials.TransportCredentials, userService UserService, authService AuthService, addr string, gsTime time.Duration, config OptionConfig) *gRPCServer {
+func NewGRPCServer(creds credentials.TransportCredentials, userService UserService, addr string, gsTime time.Duration, config OptionConfig) *gRPCServer {
 	return &gRPCServer{
 		addr:        addr,
 		creds:       creds,
 		userService: userService,
-		authService: authService,
 		gsTime:      gsTime,
 		config:      config,
 	}
 }
 
 func (s *gRPCServer) Run() error {
-	handler := NewHandler(s.userService, s.authService)
+	handler := NewHandler(s.userService)
 
 	lis, err := net.Listen("tcp", s.addr)
 	if err != nil {
@@ -69,7 +67,7 @@ func (s *gRPCServer) Run() error {
 	}
 
 	s.server = grpc.NewServer(opts...)
-	userv1.RegisterUserServiceServer(s.server, handler)
+	userv2.RegisterUserServiceServer(s.server, handler)
 
 	slog.Info("gRPC server started",
 		"address", s.addr)

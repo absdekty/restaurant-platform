@@ -14,11 +14,12 @@ import (
 type AuthHandler interface {
 	RefreshTokens(ctx context.Context, refreshtoken string) (string, string, int32, error)
 	RevokeRefreshToken(ctx context.Context, refreshtoken string) error
+	GenerateTokens(ctx context.Context, userID string) (string, string, int32, error)
 }
 
 type UserHandler interface {
 	RegisterUser(ctx context.Context, name, password string) (string, error)
-	LoginUser(ctx context.Context, name, password string) (string, string, int32, error)
+	LoginUser(ctx context.Context, name, password string) (string, error)
 }
 
 type Handler struct {
@@ -99,7 +100,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, refreshToken, refreshTTL, err := h.user.LoginUser(r.Context(), req.Name, req.Password)
+	userID, err := h.user.LoginUser(r.Context(), req.Name, req.Password)
 	if err != nil {
 		if errors.Is(err, models.ErrServiceUnavailable) {
 			logger.Warn("unavailable server",
@@ -112,7 +113,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 			logger.Warn("client request",
 				slog.String("error", err.Error()),
 				slog.String("type", "bad credintials"))
-			http.Error(w, "invalid credentials", http.StatusBadRequest)
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
 
@@ -121,6 +122,21 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 				slog.String("error", err.Error()),
 				slog.String("type", "user not found"))
 			http.Error(w, "user already exists", http.StatusNotFound)
+			return
+		}
+
+		logger.Error("internal server error",
+			slog.String("error", err.Error()))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	accessToken, refreshToken, refreshTTL, err := h.auth.GenerateTokens(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, models.ErrServiceUnavailable) {
+			logger.Warn("unavailable server",
+				slog.String("error", err.Error()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 			return
 		}
 
