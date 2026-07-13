@@ -11,7 +11,7 @@ import (
 	"restaurant/pkg/tls"
 	delivery "restaurant/services/user/internal/delivery/grpc"
 	"restaurant/services/user/internal/service"
-	"restaurant/services/user/internal/storage/sqlite3"
+	"restaurant/services/user/internal/storage/postgres"
 	"restaurant/services/user/pkg/hasher"
 	"syscall"
 )
@@ -30,7 +30,13 @@ func main() {
 		slog.String("ENV", cfg.ENV))
 
 	/* Хранилище юзеров */
-	storage, err := sqlite3.New("data/users.db")
+	storage, err := postgres.New(postgres.Config{
+		Addr:     cfg.User.PostgreSQL.Addr,
+		User:     cfg.User.PostgreSQL.User,
+		Password: cfg.User.PostgreSQL.Password,
+		Name:     cfg.User.PostgreSQL.Name,
+		SSLMode:  cfg.User.PostgreSQL.SSLMode,
+	})
 	if err != nil {
 		slog.Error("failed to create storage",
 			slog.String("error", err.Error()))

@@ -52,11 +52,13 @@ type CertsConfig struct {
 	CertKey string `mapstructure:"cert_key" validate:"required,filepath"`
 }
 
-type Config struct {
-	Addr     string
-	Password string
-	DB       int
-	PoolSize int
+/* PostgreSQL */
+type PostgresConfig struct {
+	Addr     string `mapstructure:"addr" validate:"required,hostname_port"`
+	User     string `mapstructure:"user" validate:"required"`
+	Password string `mapstructure:"password" validate:"required"`
+	Name     string `mapstructure:"db" validate:"required"`
+	SSLMode  string `mapstructure:"ssl" validate:"required,oneof=disable require"`
 }
 
 /* Gateway */
@@ -141,6 +143,7 @@ type UserSettings struct {
 	GRPCKeepaliveTime    time.Duration    `mapstructure:"grpc_keepalive_time"      validate:"required,min=1s"`
 	GRPCKeepaliveTimeout time.Duration    `mapstructure:"grpc_keepalive_timeout"   validate:"required,min=1s"`
 	GRPCAuthClient       GRPCClientConfig `mapstructure:"gRPCAuthClient"  validate:"required"`
+	PostgreSQL           PostgresConfig   `mapstructure:"postgres" validate:"required"`
 }
 
 func Load(path, envPrefix string, cfg any) error {
