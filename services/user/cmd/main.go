@@ -46,9 +46,9 @@ func main() {
 	}()
 
 	/* TLS Client */
-	clientCreds, err := tls.ClientCreds(
+	authCreds, err := tls.ClientCreds(
 		cfg.CACert,
-		cfg.User.Cert, cfg.User.CertKey,
+		cfg.User.CertsClient.Cert, cfg.User.CertsClient.CertKey,
 		"auth")
 	if err != nil {
 		slog.Error("failed to create mTLS",
@@ -60,7 +60,7 @@ func main() {
 	/* TLS Server */
 	serverCreds, err := tls.ServerCreds(
 		cfg.CACert,
-		cfg.User.Cert, cfg.User.CertKey)
+		cfg.User.CertsServer.Cert, cfg.User.CertsServer.CertKey)
 	if err != nil {
 		slog.Error("failed to create mTLS",
 			slog.String("error", err.Error()),
@@ -69,7 +69,7 @@ func main() {
 	}
 
 	/* gRPC-auth client */
-	authClient, err := client.NewAuthClient(clientCreds, cfg.AuthAddr,
+	authClient, err := client.NewAuthClient(authCreds, cfg.AuthAddr,
 		client.AuthConfig{
 			RetryMaxAttempts:       cfg.User.GRPCAuthClient.RetryMaxAttempts,
 			RetryInitialBackoff:    cfg.User.GRPCAuthClient.RetryInitialBackoff,

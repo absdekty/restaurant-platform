@@ -11,8 +11,9 @@ gateway:
   timeout_write: 10s
   timeout_idle: 120s
   shutdown_timeout: 15s
-  cert: "certs/gateway/client-cert.pem"
-  cert_key: "certs/gateway/client-key.pem"
+  certs_client:
+    cert: "certs/gateway/client-cert.pem"
+    cert_key: "certs/gateway/client-key.pem"
   rate_limiter:
     redis_client:
       addr: "localhost:6379"
@@ -79,8 +80,9 @@ gateway:
 
 auth:
   shutdown_timeout: 10s
-  cert: "certs/auth/server-cert.pem"
-  cert_key: "certs/auth/server-key.pem"
+  certs_server:
+    cert: "certs/auth/server-cert.pem"
+    cert_key: "certs/auth/server-key.pem"
   secret_key: "default-secret-key-min-32-chars-long!"
   access_ttl: 15m
   refresh_ttl: 168h
@@ -98,8 +100,12 @@ auth:
 
 user:
   shutdown_timeout: 10s
-  cert: "certs/user/server-cert.pem"
-  cert_key: "certs/user/server-key.pem"
+  certs_server:
+    cert: "certs/user/server-cert.pem"
+    cert_key: "certs/user/server-key.pem"
+  certs_client:
+    cert: "certs/user/client-cert.pem"
+    cert_key: "certs/user/client-key.pem"
   grpc_max_recv_msg_size: 1048576 # 1 MB = 1024 * 1024
   grpc_max_send_msg_size: 1048576
   grpc_conn_timeout: 10s

@@ -73,7 +73,7 @@ func main() {
 	/* TLS Clients */
 	clientAuthCreds, err := tls.ClientCreds(
 		cfg.CACert,
-		cfg.Gateway.Cert, cfg.Gateway.CertKey,
+		cfg.Gateway.CertsClient.Cert, cfg.Gateway.CertsClient.CertKey,
 		"auth")
 	if err != nil {
 		slog.Error("failed to create mTLS",
@@ -82,9 +82,10 @@ func main() {
 		os.Exit(1)
 
 	}
+
 	clientUserCreds, err := tls.ClientCreds(
 		cfg.CACert,
-		cfg.Gateway.Cert, cfg.Gateway.CertKey,
+		cfg.Gateway.CertsClient.Cert, cfg.Gateway.CertsClient.CertKey,
 		"user")
 	if err != nil {
 		slog.Error("failed to create mTLS",
