@@ -2,12 +2,15 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"restaurant/pkg/interceptors"
+	"restaurant/pkg/models"
 	"restaurant/services/gateway/internal/model"
 
+	"github.com/sony/gobreaker"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -20,6 +23,7 @@ import (
 type UserClient struct {
 	client userv1.UserServiceClient
 	conn   *grpc.ClientConn
+	cb     CircuitBreaker
 }
 
 type UserConfig struct {
@@ -33,7 +37,7 @@ type UserConfig struct {
 	KeepalivePermitWithout bool
 }
 
-func NewUserClient(creds credentials.TransportCredentials, addr string, config UserConfig) (*UserClient, error) {
+func NewUserClient(creds credentials.TransportCredentials, addr string, config UserConfig, cb CircuitBreaker) (*UserClient, error) {
 	serviceConfig := fmt.Sprintf(`{
 		"methodConfig": [{
 			"name": [{"service": "auth.v3.AuthService"}],
@@ -45,7 +49,7 @@ func NewUserClient(creds credentials.TransportCredentials, addr string, config U
 				"retryableStatusCodes": ["UNAVAILABLE"]
 			}
 		}]
-	}`,
+	}`, // FixMe: service name
 		config.RetryMaxAttempts,
 		config.RetryInitialBackoff,
 		config.RetryMaxBackoff,
@@ -70,6 +74,7 @@ func NewUserClient(creds credentials.TransportCredentials, addr string, config U
 	return &UserClient{
 		client: userv1.NewUserServiceClient(conn),
 		conn:   conn,
+		cb:     cb,
 	}, nil
 }
 
@@ -78,11 +83,22 @@ func (a *UserClient) Close() error {
 }
 
 func (a *UserClient) RegisterUser(ctx context.Context, name, password string) (string, error) {
-	resp, err := a.client.RegisterUser(ctx, &userv1.RegisterUserRequest{
-		Name:     name,
-		Password: password,
+	result, err := a.cb.Execute(func() (interface{}, error) {
+		return a.client.RegisterUser(ctx, &userv1.RegisterUserRequest{
+			Name:     name,
+			Password: password,
+		})
 	})
+
 	if err != nil {
+		if errors.Is(err, gobreaker.ErrOpenState) {
+			return "", models.ErrServiceUnavailable
+		}
+
+		if status.Code(err) == codes.Unavailable {
+			return "", models.ErrServiceUnavailable
+		}
+
 		if status.Code(err) == codes.InvalidArgument {
 			return "", model.ErrUserInvalidRegisterDetails
 		}
@@ -94,15 +110,27 @@ func (a *UserClient) RegisterUser(ctx context.Context, name, password string) (s
 		return "", err
 	}
 
+	resp := result.(*userv1.RegisterUserResponse)
 	return resp.UserId, nil
 }
 
 func (a *UserClient) LoginUser(ctx context.Context, name, password string) (string, string, int32, error) {
-	resp, err := a.client.LoginUser(ctx, &userv1.LoginUserRequest{
-		Name:     name,
-		Password: password,
+	result, err := a.cb.Execute(func() (interface{}, error) {
+		return a.client.LoginUser(ctx, &userv1.LoginUserRequest{
+			Name:     name,
+			Password: password,
+		})
 	})
+
 	if err != nil {
+		if errors.Is(err, gobreaker.ErrOpenState) {
+			return "", "", 0, models.ErrServiceUnavailable
+		}
+
+		if status.Code(err) == codes.Unavailable {
+			return "", "", 0, models.ErrServiceUnavailable
+		}
+
 		if status.Code(err) == codes.InvalidArgument {
 			return "", "", 0, model.ErrUserInvalidCredentials
 		}
@@ -114,5 +142,6 @@ func (a *UserClient) LoginUser(ctx context.Context, name, password string) (stri
 		return "", "", 0, err
 	}
 
+	resp := result.(*userv1.LoginUserResponse)
 	return resp.AccessToken, resp.RefreshToken, resp.RefreshTokenTtl, nil
 }

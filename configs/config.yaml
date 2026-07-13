@@ -63,6 +63,19 @@ gateway:
     timeout_write: 10s
     timeout_idle: 120s
     shutdown_timeout: 15s
+  circuit_breakers:
+    auth:
+      name: "auth"
+      maxrequests: 3
+      interval: 60s
+      timeout: 10s
+      maxfailures: 5
+    user:
+      name: "user"
+      maxrequests: 3
+      interval: 60s
+      timeout: 10s
+      maxfailures: 5
 
 auth:
   shutdown_timeout: 10s
