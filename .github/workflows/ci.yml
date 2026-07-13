@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [develop, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: restaurant
+          POSTGRES_PASSWORD: restaurant
+          POSTGRES_DB: users_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restaurant -d users_db"
+          --health-interval 5s
+          --health-retries 5
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Run tests
+        run: go test $(go list ./... | grep -v integration) -v -count=1
