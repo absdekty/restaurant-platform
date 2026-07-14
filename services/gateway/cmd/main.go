@@ -137,9 +137,9 @@ func main() {
 	/* Metrics server */
 	metricsServer := metrics.New(metrics.MetricsConfig{
 		Addr:         cfg.Gateway.MetricsServer.Addr,
-		ReadTimeout:  cfg.Gateway.TimeoutRead,
-		WriteTimeout: cfg.Gateway.TimeoutWrite,
-		IdleTimeout:  cfg.Gateway.TimeoutIdle,
+		ReadTimeout:  cfg.Gateway.MetricsServer.TimeoutRead,
+		WriteTimeout: cfg.Gateway.MetricsServer.TimeoutWrite,
+		IdleTimeout:  cfg.Gateway.MetricsServer.TimeoutIdle,
 		Shutdown:     cfg.Gateway.MetricsServer.ShutdownTimeout,
 	})
 
@@ -174,11 +174,11 @@ func main() {
 			AuthMW:      authMW,
 			LoggerMW:    loggerMW},
 		delivery.RESTServerConfig{
-			Addr:         cfg.Gateway.Addr,
-			ReadTimeout:  cfg.Gateway.TimeoutRead,
-			WriteTimeout: cfg.Gateway.TimeoutWrite,
-			IdleTimeout:  cfg.Gateway.TimeoutIdle,
-			GSTime:       cfg.Gateway.ShutdownTimeout,
+			Addr:         cfg.Gateway.Server.Addr,
+			ReadTimeout:  cfg.Gateway.Server.TimeoutRead,
+			WriteTimeout: cfg.Gateway.Server.TimeoutWrite,
+			IdleTimeout:  cfg.Gateway.Server.TimeoutIdle,
+			GSTime:       cfg.Gateway.Server.ShutdownTimeout,
 		})
 
 	go func() {

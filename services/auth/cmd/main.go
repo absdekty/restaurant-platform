@@ -52,8 +52,8 @@ func main() {
 
 	/* JWT-Service */
 	jwtService := service.NewJWT(
-		cfg.Auth.SecretKey,
-		cfg.Auth.AccessTTL, cfg.Auth.RefreshTTL,
+		cfg.Auth.JWTConfig.SecretKey,
+		cfg.Auth.JWTConfig.AccessTTL, cfg.Auth.JWTConfig.RefreshTTL,
 		storage)
 
 	/* TLS Server */
@@ -71,12 +71,12 @@ func main() {
 	srv := delivery.NewGRPCServer(creds, jwtService,
 		cfg.AuthAddr, cfg.Auth.ShutdownTimeout,
 		delivery.OptionConfig{
-			MaxReceivedSize:   cfg.Auth.GRPCMaxRecvMsgSize,
-			MaxSendSize:       cfg.Auth.GRPCMaxSendMsgSize,
-			ConnectionTimeout: cfg.Auth.GRPCConnTimeout,
-			MaxConnectionIdle: cfg.Auth.GRPCMaxConnIdle,
-			KeepAliveTime:     cfg.Auth.GRPCKeepaliveTime,
-			KeepAliveTimeout:  cfg.Auth.GRPCKeepaliveTimeout,
+			MaxReceivedSize:   cfg.Auth.GRPCServer.MaxRecvMsgSize,
+			MaxSendSize:       cfg.Auth.GRPCServer.MaxSendMsgSize,
+			ConnectionTimeout: cfg.Auth.GRPCServer.ConnTimeout,
+			MaxConnectionIdle: cfg.Auth.GRPCServer.MaxConnIdle,
+			KeepAliveTime:     cfg.Auth.GRPCServer.KeepaliveTime,
+			KeepAliveTimeout:  cfg.Auth.GRPCServer.KeepaliveTimeout,
 		})
 
 	go func() {

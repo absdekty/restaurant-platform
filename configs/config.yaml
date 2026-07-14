@@ -6,11 +6,12 @@ ca_cert: "certs/ca/ca-cert.pem"
 
 # Сервисы
 gateway:
-  addr: ":8080"
-  timeout_read: 5s
-  timeout_write: 10s
-  timeout_idle: 120s
-  shutdown_timeout: 15s
+  server:
+    addr: ":8080"
+    timeout_read: 5s
+    timeout_write: 10s
+    timeout_idle: 120s
+    shutdown_timeout: 15s
   certs_client:
     cert: "certs/gateway/client-cert.pem"
     cert_key: "certs/gateway/client-key.pem"
@@ -42,7 +43,7 @@ gateway:
         /register: 5m
         /refresh: 1m
         /logout: 1m
-  gRPCAuthClient:
+  grpc_client_auth:
     retry_max_attempts: 3
     retry_initial_backoff: 0.1s
     retry_max_backoff: 1s
@@ -50,7 +51,7 @@ gateway:
     keepalive_time: 10s
     keepalive_timeout: 1s
     keepalive_permit_without_stream: false
-  gRPCUserClient:
+  grpc_client_user:
     retry_max_attempts: 3
     retry_initial_backoff: 0.1s
     retry_max_backoff: 1s
@@ -83,15 +84,17 @@ auth:
   certs_server:
     cert: "certs/auth/server-cert.pem"
     cert_key: "certs/auth/server-key.pem"
-  secret_key: "default-secret-key-min-32-chars-long!"
-  access_ttl: 15m
-  refresh_ttl: 168h
-  grpc_max_recv_msg_size: 1048576 # 1 MB = 1024 * 1024
-  grpc_max_send_msg_size: 1048576
-  grpc_conn_timeout: 10s
-  grpc_max_conn_idle: 5m
-  grpc_keepalive_time: 1m
-  grpc_keepalive_timeout: 20s
+  jwt:
+    secret_key: "default-secret-key-min-32-chars-long!"
+    access_ttl: 15m
+    refresh_ttl: 168h
+  grpc_server:
+    grpc_max_recv_msg_size: 1048576 # 1 MB = 1024 * 1024
+    grpc_max_send_msg_size: 1048576
+    grpc_conn_timeout: 10s
+    grpc_max_conn_idle: 5m
+    grpc_keepalive_time: 1m
+    grpc_keepalive_timeout: 20s
   redis_client:
     addr: "redis:6379"
     password: ""
@@ -106,20 +109,13 @@ user:
   certs_client:
     cert: "certs/user/client-cert.pem"
     cert_key: "certs/user/client-key.pem"
-  grpc_max_recv_msg_size: 1048576 # 1 MB = 1024 * 1024
-  grpc_max_send_msg_size: 1048576
-  grpc_conn_timeout: 10s
-  grpc_max_conn_idle: 5m
-  grpc_keepalive_time: 1m
-  grpc_keepalive_timeout: 20s
-  gRPCAuthClient:
-    retry_max_attempts: 3
-    retry_initial_backoff: 0.1s
-    retry_max_backoff: 1s
-    retry_backoff_multiplier: 2.0
-    keepalive_time: 10s
-    keepalive_timeout: 1s
-    keepalive_permit_without_stream: true
+  grpc_server:
+    grpc_max_recv_msg_size: 1048576 # 1 MB = 1024 * 1024
+    grpc_max_send_msg_size: 1048576
+    grpc_conn_timeout: 10s
+    grpc_max_conn_idle: 5m
+    grpc_keepalive_time: 1m
+    grpc_keepalive_timeout: 20s
   postgres:
     addr: "postgres:5432"
     user: "restaurant"

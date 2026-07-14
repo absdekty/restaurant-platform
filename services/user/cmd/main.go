@@ -71,12 +71,12 @@ func main() {
 	srv := delivery.NewGRPCServer(serverCreds, userService,
 		cfg.UserAddr, cfg.User.ShutdownTimeout,
 		delivery.OptionConfig{
-			MaxReceivedSize:   cfg.User.GRPCMaxRecvMsgSize,
-			MaxSendSize:       cfg.User.GRPCMaxSendMsgSize,
-			ConnectionTimeout: cfg.User.GRPCConnTimeout,
-			MaxConnectionIdle: cfg.User.GRPCMaxConnIdle,
-			KeepAliveTime:     cfg.User.GRPCKeepaliveTime,
-			KeepAliveTimeout:  cfg.User.GRPCKeepaliveTimeout,
+			MaxReceivedSize:   cfg.User.GRPCServer.MaxRecvMsgSize,
+			MaxSendSize:       cfg.User.GRPCServer.MaxSendMsgSize,
+			ConnectionTimeout: cfg.User.GRPCServer.ConnTimeout,
+			MaxConnectionIdle: cfg.User.GRPCServer.MaxConnIdle,
+			KeepAliveTime:     cfg.User.GRPCServer.KeepaliveTime,
+			KeepAliveTimeout:  cfg.User.GRPCServer.KeepaliveTimeout,
 		})
 
 	go func() {
